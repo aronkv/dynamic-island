@@ -1,0 +1,14 @@
+[SddmGreeterTheme]
+Name=Island
+Description=Apple-style login screen matching the Quickshell Dynamic Island lock screen
+Author=aaron
+Type=sddm-theme
+Version=1.0
+Website=
+Screenshot=
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=translations
+Theme-Id=island
+Theme-API=2.0
+QtVersion=6
