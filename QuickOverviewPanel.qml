@@ -13,15 +13,29 @@ Item {
     property var bluetoothMonitor: null
     property var settingsStore: null
     property var weatherMonitor: null
+    property var nightLight: null
     property var themeProfiles: null
     property var wallpaperMonitor: null
     property var calendarStore: null
     property string activeView: "overview"
+    // Push/pop slides only for navigation inside an already-open panel.
+    // Opening straight into a sub-view (SUPER+I, IPC…) sets activeView in
+    // the same tick as the open, so it must appear in place, not slide in.
+    property bool panelOpen: false
+    property bool slideEnabled: false
+    onPanelOpenChanged: {
+        if (panelOpen) slideArm.restart()
+        else { slideArm.stop(); slideEnabled = false }
+    }
+    Timer { id: slideArm; interval: 60; onTriggered: panel.slideEnabled = true }
     property bool mediaPlaying: false
     readonly property bool calcHistoryVisible: calculatorPanel.historyVisible
     readonly property bool calcGraphVisible: calculatorPanel.graphVisible
     readonly property bool calcSubVisible: calculatorPanel.subVisible
+    readonly property real calcNaturalHeight: calculatorPanel.naturalHeight
+    function wifiShare() { wifiPanel.toggleShare() }
     function calcSetExpression(t) { calculatorPanel.setExpression(t) }
+    function calcShowHelp() { calculatorPanel.helpOpen = true }
     signal backToNowPlaying()
     signal closeRequested()
     readonly property bool wifiPasswordEntryOpen: wifiPanel.passwordEntryOpen || wifiPanel.modifyEntryOpen
@@ -273,7 +287,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "overview" ? 0 : -Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -379,7 +393,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "battery" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -408,7 +422,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "wifi" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -437,7 +451,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "bluetooth" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -466,7 +480,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "settings" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -479,6 +493,7 @@ Item {
             Layout.fillHeight: true
             store: panel.settingsStore
             weatherMonitor: panel.weatherMonitor
+            nightLight: panel.nightLight
             onCloseRequested: panel.closeRequested()
         }
     }
@@ -494,7 +509,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "calculator" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -504,6 +519,7 @@ Item {
 
         CalculatorPanel {
             id: calculatorPanel
+            active: panel.panelOpen && panel.activeView === "calculator"
             Layout.fillWidth: true
             Layout.fillHeight: true
             settingsStore: panel.settingsStore
@@ -522,7 +538,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "calendar" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -550,7 +566,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "weather" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -578,7 +594,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "theme" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -608,7 +624,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "wallpaper" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 
@@ -636,7 +652,7 @@ Item {
         // slides out to the left.
         transform: Translate {
             x: panel.activeView === "shortcuts" ? 0 : Theme.panelSlide
-            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         }
         visible: opacity > 0
 

@@ -1,0 +1,7 @@
+{
+  "name": "Island",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "author": "aaron",
+  "description": "Apple-style dark theme matching the Quickshell Dynamic Island. Colors are written by ~/.config/quickshell/obsidian_write_theme.py (follow the island theme or static Apple)."
+}

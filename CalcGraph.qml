@@ -4,12 +4,13 @@ import QtQuick.Shapes
 // Small function plot for the calculator: f(x) = left − right side of an
 // equation / inequality over `range`, the x axis (f = 0), roots as dots,
 // and — for inequalities — the solution intervals shaded along the x axis.
+// Hovering shows a crosshair with the (x, f(x)) readout.
 Rectangle {
     id: graph
     property var analysis: null     // CalcEngine.analyze() result
     property color accent: "#ff9f0a"
-    radius: 12
-    color: Qt.rgba(1, 1, 1, 0.05)
+    radius: 16
+    color: Theme.card
     clip: true
 
     readonly property real xMin: analysis ? analysis.range[0] : -10
@@ -144,5 +145,49 @@ Rectangle {
         color: "#ffffff"
         opacity: 0.35
         font.pixelSize: 9
+    }
+
+    // Hover crosshair + readout.
+    MouseArea {
+        id: hover
+        anchors.fill: parent
+        hoverEnabled: true
+        readonly property real hx: graph.xMin + (Math.max(graph.padX, Math.min(graph.width - graph.padX, mouseX)) - graph.padX) / (graph.width - 2 * graph.padX) * (graph.xMax - graph.xMin)
+        readonly property real hy: { try { return graph.analysis ? graph.analysis.f(hx) : NaN } catch (e) { return NaN } }
+    }
+    Rectangle {
+        visible: hover.containsMouse
+        x: graph.px(hover.hx)
+        width: 1
+        height: parent.height
+        color: "#ffffff"
+        opacity: 0.3
+    }
+    Rectangle {
+        visible: hover.containsMouse && isFinite(hover.hy) && hover.hy >= graph.yRange[0] && hover.hy <= graph.yRange[1]
+        x: graph.px(hover.hx) - 4
+        y: graph.py(hover.hy) - 4
+        width: 8
+        height: 8
+        radius: 4
+        color: graph.accent
+    }
+    Rectangle {
+        visible: hover.containsMouse
+        x: Math.min(graph.width - width - 6, Math.max(6, graph.px(hover.hx) + 8))
+        y: 6
+        width: readout.implicitWidth + 12
+        height: 20
+        radius: 10
+        color: Qt.rgba(0, 0, 0, 0.6)
+        Text {
+            id: readout
+            anchors.centerIn: parent
+            text: "x " + (Math.round(hover.hx * 100) / 100) + "  ·  y " + (isFinite(hover.hy) ? Math.round(hover.hy * 100) / 100 : "—")
+            color: "#ffffff"
+            font.pixelSize: 10
+            font.family: Theme.fontText
+            font.features: { "tnum": 1 }
+        }
     }
 }

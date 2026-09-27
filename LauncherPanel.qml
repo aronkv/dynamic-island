@@ -18,6 +18,7 @@ import QtQuick.Effects
 FocusScope {
     id: launcher
     property bool active: false
+    property var activity: null     // ActivityStore (timer / record commands)
     signal closeRequested()
 
     property string query: ""
@@ -33,7 +34,15 @@ FocusScope {
         list.positionViewAtBeginning()
         if (active) searchInput.forceActiveFocus()
     }
-    onQueryChanged: { currentIndex = 0; list.positionViewAtBeginning() }
+    onQueryChanged: {
+        currentIndex = 0
+        list.positionViewAtBeginning()
+        fileRows = []
+        // Computed from `query` directly: the `fileSearch` binding can still
+        // hold its old value inside this handler (see CLAUDE.md).
+        const q = query.trim()
+        if (q.length >= 3 && !/^[:?]/.test(q)) fileTimer.restart()
+    }
 
     // ── Persistence: launch counts + favorites ─────────────────────────
     FileView {
@@ -96,6 +105,9 @@ FocusScope {
     }
 
     readonly property bool searching: query.trim() !== ""
+    // ":fire" → emoji search, "?query" → web search only.
+    readonly property bool emojiMode: query.replace(/^\s+/, "").startsWith(":")
+    readonly property bool webOnly: query.replace(/^\s+/, "").startsWith("?")
 
     readonly property var listApps: {
         const q = launcher.query.trim().toLowerCase()
@@ -125,16 +137,161 @@ FocusScope {
         try { return calc.format(calc.evaluate(q)) } catch (e) { return "" }
     }
 
-    // One flat selection index across: [favorite tiles] + [calc row] + [list rows].
+    // ── Extra rows: commands, calc, emoji (before apps); files, web (after) ──
+    // Each: { kind, title, sub, glyph, glyphBg, icon, run: function }
+    property var _emoji: []
+    FileView {
+        path: Quickshell.shellDir + "/emoji.json"
+        printErrors: false
+        onLoaded: { try { launcher._emoji = JSON.parse(text()) } catch (e) {} }
+    }
+
+    readonly property var preRows: {
+        const q = query.trim()
+        const rows = []
+        if (q === "") return rows
+        if (emojiMode) {
+            const t = q.slice(1).trim().toLowerCase()
+            if (t === "") return rows
+            const words = t.split(/\s+/)
+            // Rank: exact name, then name starting with the query, then a
+            // whole word match, then any substring.
+            const hits = []
+            for (const e of _emoji) {
+                const n = e.n.toLowerCase()
+                if (!words.every(w => n.indexOf(w) !== -1)) continue
+                const rank = n === t ? 0 : n.startsWith(t) ? 1 : (" " + n + " ").indexOf(" " + t + " ") !== -1 ? 2 : 3
+                hits.push({ e: e, rank: rank, len: n.length })
+            }
+            hits.sort((a, b) => a.rank - b.rank || a.len - b.len)
+            for (const h of hits.slice(0, 40))
+                rows.push({ kind: "emoji", title: h.e.n.charAt(0).toUpperCase() + h.e.n.slice(1), sub: h.e.g + " · Enter copies",
+                            glyph: h.e.c, glyphBg: "transparent", copy: h.e.c })
+            return rows
+        }
+        if (webOnly) return [webRow(q.slice(1).trim())]
+        const lq = q.toLowerCase()
+        // Typed a web address (youtube.com, https://…, localhost:8080) →
+        // "Open …" first, so Enter opens the site instead of searching it.
+        const url = urlOf(q)
+        if (url !== "") rows.push(urlRow(q, url))
+        // Live-activity commands.
+        if (activity) {
+            const m = lq.match(/^(?:timer|t|időzítő)\s+(.+)$/)
+            const secs = m ? activity.parseDuration(m[1]) : 0
+            if (secs > 0)
+                rows.push({ kind: "cmd", title: "Start timer · " + activity.format(secs * 1000), sub: "Counts down in the island",
+                            glyph: "⏱", glyphBg: Theme.orange, cmd: "timer", secs: secs })
+            const cmds = [
+                { w: ["stopwatch", "stopper"], title: "Start stopwatch", cmd: "stopwatch", glyph: "⏱" },
+                { w: ["pomodoro"], title: "Start pomodoro · 25 / 5", cmd: "pomodoro", glyph: "🍅" },
+                { w: ["record", "screen record", "felvétel"], title: activity.recording ? "Stop screen recording" : "Record screen", cmd: "record", glyph: "●" }
+            ]
+            for (const c of cmds)
+                if (lq.length >= 3 && c.w.some(w => w.startsWith(lq)))
+                    rows.push({ kind: "cmd", title: c.title, sub: "Live activity in the island", glyph: c.glyph, glyphBg: c.cmd === "record" ? "#ff453a" : Theme.orange, cmd: c.cmd })
+        }
+        if (calcResult !== "")
+            rows.push({ kind: "calc", title: calcResult, sub: calcSmart && calcSmart.sub ? calcSmart.sub : q, glyph: "=", glyphBg: Theme.orange })
+        return rows
+    }
+
+    // "youtube.com", "www.x.hu/path", "https://…", "localhost:3000", IPs →
+    // a URL; everything else (incl. file names like notes.txt) → "".
+    function urlOf(q) {
+        const t = q.trim()
+        if (t === "" || /\s/.test(t)) return ""
+        if (/^https?:\/\/\S+$/i.test(t)) return t
+        if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/\S*)?$/i.test(t)) return "http://" + t
+        const m = t.match(/^(?:[a-z0-9-]+\.)+([a-z]{2,24})(?::\d+)?(?:[\/?#]\S*)?$/i)
+        if (!m) return ""
+        const fileExt = /^(txt|md|pdf|png|jpe?g|gif|webp|svg|js|ts|py|qml|lua|sh|json|toml|ya?ml|conf|log|zip|tar|gz|mp3|mp4|mkv|flac|docx?|xlsx?|pptx?|odt|c|h|cpp|rs|go|java|css|html?)$/i
+        if (fileExt.test(m[1]) && t.indexOf("/") === -1) return ""
+        return "https://" + t
+    }
+    function urlRow(q, url) {
+        const host = url.replace(/^https?:\/\//i, "").split(/[\/?#:]/)[0]
+        return { kind: "web", title: "Open " + q.trim(), sub: url, glyph: "🌐", glyphBg: Theme.blue, url: url,
+                 favicon: "https://www.google.com/s2/favicons?sz=64&domain=" + encodeURIComponent(host) }
+    }
+
+    function webRow(q) {
+        return { kind: "web", title: "Search the web for “" + q + "”", sub: "Google", icon: "system-search-symbolic", glyphBg: "transparent", url: "https://www.google.com/search?q=" + encodeURIComponent(q) }
+    }
+
+    // Files via plocate (home only, no hidden paths), debounced.
+    property var fileRows: []
+    readonly property bool fileSearch: searching && !emojiMode && !webOnly && query.trim().length >= 3
+    Timer {
+        id: fileTimer
+        interval: 220
+        onTriggered: {
+            fileProc.forQuery = launcher.query.trim()
+            fileProc.command = ["plocate", "-i", "-l", "60", "--", fileProc.forQuery]
+            fileProc.running = true
+        }
+    }
+    Process {
+        id: fileProc
+        property string forQuery: ""
+        stdout: StdioCollector {
+            waitForEnd: true
+            onTextChanged: {
+                if (fileProc.forQuery !== launcher.query.trim()) return
+                const home = Quickshell.env("HOME") + "/"
+                const out = []
+                for (const p of text.split("\n")) {
+                    if (!p.startsWith(home)) continue
+                    const rel = p.slice(home.length)
+                    if (/(^|\/)\./.test(rel) || /node_modules|__pycache__|\/target\//.test(rel)) continue
+                    const name = rel.split("/").pop()
+                    const t = launcher.fileType(name)
+                    out.push({ kind: "file", title: name, sub: "~/" + rel.slice(0, rel.length - name.length), path: p,
+                               thumbKind: t.thumb, mime: t.icon, glyphBg: "transparent" })
+                    if (out.length >= 5) break
+                }
+                launcher.fileRows = out
+            }
+        }
+    }
+
+    // Thumbnail source kind + fallback icon-theme name by extension.
+    function fileType(name) {
+        const ext = (name.match(/\.([^.]+)$/) || ["", ""])[1].toLowerCase()
+        if (/^(png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/.test(ext)) return { thumb: "image", icon: "image-x-generic" }
+        if (/^(mp3|flac|ogg|opus|m4a|wav|aac|wma)$/.test(ext)) return { thumb: "audio", icon: "audio-x-generic" }
+        if (/^(mp4|mkv|webm|mov|avi|m4v)$/.test(ext)) return { thumb: "video", icon: "video-x-generic" }
+        if (ext === "pdf") return { thumb: "pdf", icon: "application-pdf" }
+        if (/^(docx?|odt|rtf|pptx?|odp|xlsx?|ods)$/.test(ext)) return { thumb: "", icon: "x-office-document" }
+        if (/^(sh|py|js|qml|lua|c|cpp|h|rs|go|java|ts)$/.test(ext)) return { thumb: "", icon: "text-x-script" }
+        if (/^(zip|tar|gz|xz|zst|7z|rar)$/.test(ext)) return { thumb: "", icon: "package-x-generic" }
+        if (name.indexOf(".") === -1) return { thumb: "", icon: "folder" }
+        return { thumb: "", icon: "text-x-generic" }
+    }
+
+    readonly property string thumbDir: Quickshell.env("HOME") + "/.cache/quickshell/thumbs"
+    Process { command: ["mkdir", "-p", launcher.thumbDir]; running: true }
+
+    readonly property var postRows: {
+        if (!searching || emojiMode || webOnly) return []
+        return fileRows.concat([webRow(query.trim())])
+    }
+
+    // One flat selection index: [tiles] + [preRows] + [apps] + [postRows].
     readonly property int tileCount: searching ? 0 : favoriteApps.length
-    readonly property int calcCount: calcResult !== "" ? 1 : 0
-    readonly property int itemCount: tileCount + calcCount + listApps.length
+    readonly property var shownApps: emojiMode || webOnly ? [] : listApps
+    readonly property int preCount: preRows.length
+    readonly property int itemCount: tileCount + preCount + shownApps.length + postRows.length
+    function rowAt(r) {
+        if (r < preCount) return preRows[r]
+        r -= preCount
+        if (r < shownApps.length) return { kind: "app", entry: shownApps[r] }
+        return postRows[r - shownApps.length] || null
+    }
 
     function itemAt(i) {
         if (i < tileCount) return { kind: "tile", entry: favoriteApps[i] }
-        i -= tileCount
-        if (i < calcCount) return { kind: "calc", entry: null }
-        return { kind: "row", entry: listApps[i - calcCount] }
+        return rowAt(i - tileCount) || { kind: "none" }
     }
 
     function moveH(d) {
@@ -166,17 +323,44 @@ FocusScope {
         launcher.closeRequested()
     }
 
-    function activate(i) {
+    // `alt` = Ctrl+Enter: open the file's folder instead of the file.
+    function activate(i, alt) {
         const it = itemAt(i)
-        if (it.kind === "calc") {
-            copyProc.command = ["wl-copy", "--", calcSmart ? calcSmart.copy : calcResult.replace(/ /g, "")]
+        switch (it.kind) {
+        case "tile":
+        case "app":
+            launchEntry(it.entry)
+            return
+        case "calc":
+            copyProc.command = ["wl-copy", "--", calcSmart ? calcSmart.copy : calcResult.replace(/ /g, "")]
             copyProc.running = true
-            launcher.closeRequested()
+            break
+        case "emoji":
+            copyProc.command = ["wl-copy", "--", it.copy]
+            copyProc.running = true
+            break
+        case "file":
+            openProc.command = ["xdg-open", alt ? it.path.slice(0, it.path.lastIndexOf("/")) : it.path]
+            openProc.startDetached()
+            break
+        case "web":
+            openProc.command = ["xdg-open", it.url]
+            openProc.startDetached()
+            break
+        case "cmd":
+            if (!activity) return
+            if (it.cmd === "timer") activity.startTimer(it.secs)
+            else if (it.cmd === "stopwatch") activity.startStopwatch()
+            else if (it.cmd === "pomodoro") activity.startPomodoro()
+            else if (it.cmd === "record") activity.toggleRecording()
+            break
+        default:
             return
         }
-        launchEntry(it.entry)
+        launcher.closeRequested()
     }
 
+    Process { id: openProc }
     Process { id: copyProc }
     Process { id: termProc }
 
@@ -186,6 +370,106 @@ FocusScope {
         asynchronous: true
         smooth: true
         mipmap: true
+    }
+
+    // File preview for a launcher file row. Images load directly; other
+    // media first look for an existing thumbnail (freedesktop cache, then
+    // ours), otherwise one is generated (ffmpeg cover art / ffmpegthumbnailer
+    // / pdftoppm, argv only) and looked up again — music also falls back to
+    // cover.jpg/folder.jpg next to the file. Existence is checked by a probe
+    // Process (paths as positional args) so missing files never hit Image's
+    // "Cannot open" warnings. Nothing found → the icon theme's mime icon.
+    component FileThumb: Item {
+        id: ft
+        property var info: null
+        readonly property string path: info && info.path ? info.path : ""
+        readonly property string kind: info && info.thumbKind ? info.thumbKind : ""
+        readonly property string hash: path !== "" ? Qt.md5("file://" + encodeURI(path)) : ""
+        readonly property string cacheFile: launcher.thumbDir + "/" + hash + ".png"
+        property string found: ""
+
+        function covers() {
+            if (kind !== "audio") return []
+            const dir = path.slice(0, path.lastIndexOf("/") + 1)
+            return ["cover.jpg", "folder.jpg", "front.jpg", "Cover.jpg", "cover.png"].map(c => dir + c)
+        }
+        function start() {
+            found = ""
+            probe.running = false
+            gen.running = false
+            if (path === "" || kind === "") return
+            if (kind === "image") { found = path; return }
+            const xdg = Quickshell.env("HOME") + "/.cache/thumbnails/"
+            probe.afterGen = false
+            probe.forPath = path
+            probe.command = ["sh", "-c", "for f; do [ -s \"$f\" ] && { echo \"$f\"; exit 0; }; done; exit 1", "sh",
+                             xdg + "normal/" + hash + ".png", xdg + "large/" + hash + ".png", cacheFile]
+            probe.running = true
+        }
+        onPathChanged: start()
+        Component.onCompleted: start()
+
+        Process {
+            id: probe
+            property string forPath: ""
+            property bool afterGen: false
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (probe.forPath !== ft.path) return
+                    const f = text.trim()
+                    if (f !== "") ft.found = f
+                    else if (!probe.afterGen) ft.generate()
+                }
+            }
+        }
+        function generate() {
+            gen.forPath = path
+            if (kind === "audio")
+                gen.command = ["ffmpeg", "-loglevel", "error", "-y", "-i", path, "-an", "-frames:v", "1", "-vf", "scale=128:-2", cacheFile]
+            else if (kind === "video")
+                gen.command = ["ffmpegthumbnailer", "-i", path, "-o", cacheFile, "-s", "128"]
+            else if (kind === "pdf")
+                gen.command = ["pdftoppm", "-png", "-singlefile", "-scale-to", "128", path, cacheFile.slice(0, -4)]
+            else return
+            gen.running = true
+        }
+        Process {
+            id: gen
+            property string forPath: ""
+            onExited: {
+                if (gen.forPath !== ft.path) return
+                probe.afterGen = true
+                probe.forPath = ft.path
+                probe.command = ["sh", "-c", "for f; do [ -s \"$f\" ] && { echo \"$f\"; exit 0; }; done; exit 1", "sh",
+                                 ft.cacheFile].concat(ft.covers())
+                probe.running = true
+            }
+        }
+
+        ClippingRectangle {
+            anchors.fill: parent
+            radius: 7
+            color: "transparent"
+            visible: thumbImg.status === Image.Ready
+            Image {
+                id: thumbImg
+                anchors.fill: parent
+                source: ft.found !== "" ? "file://" + ft.found : ""
+                sourceSize.width: 64
+                sourceSize.height: 64
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                cache: false
+            }
+        }
+        IconImage {
+            anchors.fill: parent
+            visible: thumbImg.status !== Image.Ready
+            source: ft.info ? Quickshell.iconPath(ft.info.mime || "text-x-generic", "text-x-generic") : ""
+            asynchronous: true
+            smooth: true
+            mipmap: true
+        }
     }
 
     component SectionLabel: Text {
@@ -299,8 +583,8 @@ FocusScope {
                     else event.accepted = false
                 }
                 Keys.onTabPressed: launcher.currentIndex = (launcher.currentIndex + 1) % Math.max(1, launcher.itemCount)
-                Keys.onReturnPressed: launcher.activate(launcher.currentIndex)
-                Keys.onEnterPressed: launcher.activate(launcher.currentIndex)
+                Keys.onReturnPressed: (event) => launcher.activate(launcher.currentIndex, (event.modifiers & Qt.ControlModifier) !== 0)
+                Keys.onEnterPressed: (event) => launcher.activate(launcher.currentIndex, (event.modifiers & Qt.ControlModifier) !== 0)
                 Keys.onEscapePressed: {
                     if (text !== "") text = ""
                     else launcher.closeRequested()
@@ -316,7 +600,7 @@ FocusScope {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: searchInput.text.length === 0
-                    text: "Search apps or calculate"
+                    text: "Search apps, files, :emoji, ?web, timer 5m…"
                     color: "#ffffff"
                     opacity: 0.35
                     font: searchInput.font
@@ -411,7 +695,7 @@ FocusScope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: launcher.calcCount + launcher.listApps.length
+            model: launcher.itemCount - launcher.tileCount
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             cacheBuffer: 400
@@ -425,8 +709,10 @@ FocusScope {
             delegate: Item {
                 id: row
                 required property int index
-                readonly property bool isCalc: index < launcher.calcCount
-                readonly property var entry: isCalc ? null : launcher.listApps[index - launcher.calcCount]
+                readonly property var info: launcher.rowAt(index)
+                readonly property bool isSpecial: info !== null && info.kind !== "app"
+                readonly property bool isCalc: info !== null && info.kind === "calc"
+                readonly property var entry: info && info.kind === "app" ? info.entry : null
                 readonly property bool selected: list.selectedRow === index
                 readonly property bool hovered: rowHover.hovered
                 width: list.width
@@ -462,19 +748,65 @@ FocusScope {
 
                     AppIcon {
                         anchors.fill: parent
-                        visible: !row.isCalc
+                        visible: !row.isSpecial
                         entry: row.entry
+                    }
+                    FileThumb {
+                        anchors.fill: parent
+                        visible: row.isSpecial && row.info.kind === "file"
+                        info: visible ? row.info : null
                     }
                     Rectangle {
                         anchors.fill: parent
-                        visible: row.isCalc
+                        visible: row.isSpecial && row.info.kind !== "file"
+                        // Symbolic icon (web search), flat white via alpha mask.
+                        Item {
+                            anchors.centerIn: parent
+                            width: 22
+                            height: 22
+                            visible: !!(row.info && row.info.icon)
+                            IconImage {
+                                id: rowSymIcon
+                                anchors.fill: parent
+                                source: row.info && row.info.icon ? "image://icon/" + row.info.icon : ""
+                                visible: false
+                                layer.enabled: true
+                                smooth: true
+                                mipmap: true
+                            }
+                            Rectangle { id: rowSymFill; anchors.fill: parent; color: "#ffffff"; visible: false }
+                            MultiEffect {
+                                anchors.fill: parent
+                                source: rowSymFill
+                                maskEnabled: true
+                                maskSource: rowSymIcon
+                                maskThresholdMin: 0.5
+                                maskSpreadAtMin: 0.0
+                                maskThresholdMax: 1.0
+                                maskSpreadAtMax: 0.0
+                            }
+                        }
+                        // Site favicon over the glyph once it has loaded.
+                        Image {
+                            id: favicon
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            source: row.info && row.info.favicon ? row.info.favicon : ""
+                            sourceSize.width: 64
+                            sourceSize.height: 64
+                            asynchronous: true
+                            smooth: true
+                            visible: status === Image.Ready
+                        }
                         radius: 8
-                        color: Theme.orange
+                        color: favicon.visible ? "#ffffff" : row.info && row.info.glyphBg ? row.info.glyphBg : Theme.cardElevated
                         Text {
                             anchors.centerIn: parent
-                            text: "="
+                            visible: !favicon.visible && !(row.info && row.info.icon)
+                            text: row.info && row.info.glyph ? row.info.glyph : ""
                             color: "#ffffff"
-                            font.pixelSize: 18
+                            font.pixelSize: row.info && row.info.kind === "emoji" ? 24 : 16
                             font.weight: 700
                         }
                     }
@@ -490,7 +822,7 @@ FocusScope {
 
                     Text {
                         width: parent.width
-                        text: row.isCalc ? launcher.calcResult : (row.entry ? row.entry.name : "")
+                        text: row.isSpecial ? row.info.title : (row.entry ? row.entry.name : "")
                         color: "#ffffff"
                         font.pixelSize: row.isCalc ? 17 : 14
                         font.weight: 600
@@ -500,7 +832,7 @@ FocusScope {
                     Text {
                         width: parent.width
                         visible: text !== ""
-                        text: row.isCalc ? (launcher.calcSmart && launcher.calcSmart.sub ? launcher.calcSmart.sub : launcher.query.trim())
+                        text: row.isSpecial ? (row.info.sub || "")
                             : row.entry ? (row.entry.genericName || row.entry.comment || "") : ""
                         color: "#ffffff"
                         opacity: 0.45
@@ -519,7 +851,7 @@ FocusScope {
 
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: row.selected && row.isCalc
+                        visible: row.selected && row.info && (row.isCalc || row.info.kind === "emoji")
                         width: hintText.implicitWidth + 14
                         height: 22
                         radius: 6
@@ -538,7 +870,7 @@ FocusScope {
 
                     StarButton {
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: !row.isCalc
+                        visible: !row.isSpecial
                         on: row.entry ? launcher.isFavorite(row.entry.id) : false
                         shown: row.selected || row.hovered
                         onToggled: if (row.entry) launcher.toggleFavorite(row.entry.id)

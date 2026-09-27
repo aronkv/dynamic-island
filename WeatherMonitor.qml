@@ -175,6 +175,12 @@ Item {
     readonly property string locationSource: settingsStore && settingsStore.weatherManualLocation && settingsStore.weatherCity.trim() !== "" ? "manual" : "ip"
     property date lastUpdated: new Date(0)
     property var _hourly: []
+
+    // Rain alert: first 15-minute slot within the next ~45 min with real
+    // precipitation (≥ 0.2 mm or ≥ 60 % chance) while it isn't raining now.
+    readonly property bool rainingNow: [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].indexOf(_weatherCode) !== -1
+    property int rainInMinutes: -1          // -1 = no rain expected soon
+    readonly property bool rainSoon: rainInMinutes >= 0 && rainInMinutes <= 30 && !rainingNow
     property var _daily: []
 
     function fetchWeather() {
@@ -184,6 +190,7 @@ Item {
             + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,is_day,uv_index,pressure_msl,visibility"
             + "&hourly=temperature_2m,weather_code,precipitation_probability,is_day&forecast_hours=24"
             + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max&forecast_days=7"
+            + "&minutely_15=precipitation,precipitation_probability&forecast_minutely_15=4"
             + "&timezone=auto"]
         weatherProbe.running = true
     }
@@ -208,6 +215,13 @@ Item {
                         hours.push({ time: h.time[i], temp: h.temperature_2m[i], code: h.weather_code[i],
                                      isDay: h.is_day[i] === 1, precip: h.precipitation_probability[i] })
                     weatherMonitor._hourly = hours
+                    const q = data.minutely_15
+                    let rainIn = -1
+                    if (q && q.time) for (let i = 0; i < q.time.length; i++) {
+                        const wet = (q.precipitation[i] || 0) >= 0.2 || (q.precipitation_probability[i] || 0) >= 60
+                        if (wet) { rainIn = Math.max(0, Math.round((new Date(q.time[i]).getTime() - Date.now()) / 60000)); break }
+                    }
+                    weatherMonitor.rainInMinutes = rainIn
                     const d = data.daily
                     const days = []
                     if (d) for (let i = 0; i < d.time.length; i++)

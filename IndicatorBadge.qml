@@ -14,6 +14,9 @@ Rectangle {
     // height, but nothing else depends on the old hardcoded 28.
     property int size: 28
     property color bgColor: "#000000"
+    // "mic" | "video": draw the filled SF-style vector glyph (MicShape /
+    // VideoShape) instead of the icon-theme icon.
+    property string shape: ""
 
     width: size
     height: size
@@ -26,6 +29,21 @@ Rectangle {
 
     Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+    MicShape {
+        anchors.centerIn: parent
+        visible: badge.shape === "mic"
+        width: Math.round(badge.size * 0.5)
+        height: width
+        color: badge.iconColor
+    }
+    VideoShape {
+        anchors.centerIn: parent
+        visible: badge.shape === "video"
+        width: Math.round(badge.size * 0.5)
+        height: width
+        color: badge.iconColor
+    }
 
     IconImage {
         id: iconImg
@@ -41,7 +59,7 @@ Rectangle {
         implicitSize: Math.round(size * 16 / 28)
         smooth: true
         mipmap: true
-        source: "image://icon/" + badge.icon
+        source: badge.icon !== "" ? "image://icon/" + badge.icon : ""
         visible: false
         // Used as MultiEffect's maskSource below — that needs a rendered
         // texture to sample, which only exists if this item is layered
@@ -65,6 +83,7 @@ Rectangle {
     }
 
     MultiEffect {
+        visible: badge.shape === ""
         anchors.fill: iconImg
         source: iconFill
         maskEnabled: true

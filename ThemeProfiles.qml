@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "ThemePalette.js" as Palette
 
 // Named color-theme presets for the Theme panel's carousel: T480 + a
 // handful of hand-authored color-family presets, each just a name + an
@@ -59,20 +60,10 @@ Item {
     // from a single family-accent hex, following the exact recipe used to
     // hand-author the static presets (fixed near-black/grey/white slots,
     // three accent-derived slots) — see the plan's "Data model" section.
+    // Monochrome 16-color palette (ThemePalette.js): accent shades + greys,
+    // with real, lighter bright pairs and readable contrast everywhere.
     function _kittyFromAccent(accent) {
-        const mid = accent
-        const dark = themeProfiles._mix(accent, "#000000", 0.5)
-        const bright = themeProfiles._mix(accent, "#ffffff", 0.15)
-        // Lighter near-black than the static presets' #1a1a1a/#2a2a2a —
-        // explicit user request: the Dynamic entry's black swatch read as
-        // blending into the terminal background at a glance.
-        const colors = [
-            "#262626", mid, dark, "#404040",
-            "#808080", "#bfbfbf", bright, "#ffffff",
-            "#363636", mid, dark, "#404040",
-            "#808080", "#bfbfbf", bright, "#ffffff",
-        ]
-        return { background: "#0a0a0a", foreground: "#c8c8c8", cursor: bright, colors: colors }
+        return Palette.paletteFromAccent(accent, "#0a0a0a")
     }
 
     Process {
@@ -114,6 +105,29 @@ Item {
     // with no restart needed, unlike Spotify/Qt/GTK.
     Process {
         id: vscodeWriteProc
+    }
+
+    // Obsidian "Island" theme (vault/.obsidian/themes/Island): its color
+    // block follows the accent, or stays the static Apple palette —
+    // settingsStore.obsidianFollowTheme. Obsidian live-reloads the CSS.
+    Process {
+        id: obsidianWriteProc
+    }
+
+    function _writeObsidian(accent) {
+        const follow = !settingsStore || settingsStore.obsidianFollowTheme
+        obsidianWriteProc.command = ["python3",
+            Quickshell.env("HOME") + "/.config/quickshell/obsidian_write_theme.py"].concat(
+            follow ? ["follow", String(accent)] : ["static"])
+        if (obsidianWriteProc.running) obsidianWriteProc.running = false
+        obsidianWriteProc.running = true
+    }
+
+    Connections {
+        target: settingsStore
+        function onObsidianFollowThemeChanged() {
+            themeProfiles._writeObsidian(settingsStore.themeAccent)
+        }
     }
 
     function _writeVSCode(accent) {
@@ -192,6 +206,14 @@ Item {
     function applyDynamic() {
         if (!wallpaperMonitor || !wallpaperMonitor.currentPath || !matugenMonitor) return
         if (settingsStore) settingsStore.currentThemeProfile = "Dynamic"
+        // Known accent → push kitty/borders/island/Obsidian right away (like
+        // applyProfile); matugen's echo below re-applies the same values.
+        if (dynamicAccent !== "") {
+            const kitty = themeProfiles._kittyFromAccent(dynamicAccent)
+            themeProfiles._writeKitty(kitty)
+            themeProfiles._writeKdeglobals(kitty.background, kitty.foreground, dynamicAccent)
+            themeProfiles._applyAccentToBorders(dynamicAccent)
+        }
         matugenMonitor.applyFromWallpaper(wallpaperMonitor.currentPath)
     }
 
@@ -200,6 +222,10 @@ Item {
     // it, so ThemePanel can show an up-to-date 8-color preview while just
     // navigating (before Enter is pressed).
     property var dynamicPreviewColors: []
+    // Raw accent last extracted from the current wallpaper (preview or real
+    // apply). Lets applyDynamic() repaint synchronously and the Theme panel
+    // preview show the right color instead of the previous theme's accent.
+    property string dynamicAccent: ""
 
     function refreshDynamicPreview() {
         if (!wallpaperMonitor || !wallpaperMonitor.currentPath || !matugenMonitor) return
@@ -223,12 +249,14 @@ Item {
         themeColorMonitor.setActiveBorderColor(accent.replace("#", "") + "ff")
         themeColorMonitor.setInactiveBorderColor(themeProfiles._mix(accent, "#595959", 0.5).replace("#", "") + "aa")
         themeProfiles._writeVSCode(accent)
+        themeProfiles._writeObsidian(accent)
     }
 
     Connections {
         target: matugenMonitor
         function onWallpaperAccentReady(accent) {
             const kitty = themeProfiles._kittyFromAccent(accent)
+            themeProfiles.dynamicAccent = accent
             themeProfiles.dynamicPreviewColors = kitty.colors.slice(0, 8)
             // Only actually push to kitty/border/island when Dynamic is
             // the currently-applied theme — a wallpaper change refreshing

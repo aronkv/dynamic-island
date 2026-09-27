@@ -63,14 +63,14 @@ Item {
 
     Behavior on leftEdge {
         NumberAnimation {
-            duration: osd._movingRight ? 380 : 190
+            duration: Theme.reduceMotion ? 0 : osd._movingRight ? 380 : 190
             easing.type: osd._movingRight ? Easing.OutBack : Easing.OutCubic
             easing.overshoot: 1.2
         }
     }
     Behavior on rightEdge {
         NumberAnimation {
-            duration: osd._movingRight ? 190 : 380
+            duration: Theme.reduceMotion ? 0 : osd._movingRight ? 190 : 380
             easing.type: osd._movingRight ? Easing.OutCubic : Easing.OutBack
             easing.overshoot: 1.2
         }

@@ -37,4 +37,8 @@ Singleton {
     readonly property int fadeDuration: 220
     readonly property int contentScaleDuration: 380
     readonly property int panelSlide: 36
+
+    // Settings → Reduce motion (bound from DynamicIsland to settingsStore):
+    // no springs/overshoot, no slides, short plain fades, no ambient loops.
+    property bool reduceMotion: false
 }

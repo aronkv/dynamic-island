@@ -42,9 +42,8 @@ ColumnLayout {
     function accentFor(item) {
         if (!item) return "#ffffff"
         if (item.isDynamic) {
-            if (panel.activeThemeName === "Dynamic" && panel.settingsStore) return panel.settingsStore.themeAccent
-            const p = paletteFor(item)
-            return p.length > 4 ? p[4] : "#ffffff"
+            if (panel.profiles && panel.profiles.dynamicAccent !== "") return panel.profiles.dynamicAccent
+            return panel.settingsStore ? panel.settingsStore.themeAccent : "#ffffff"
         }
         return item.accent
     }

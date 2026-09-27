@@ -67,7 +67,7 @@ Item {
             color: "#ffffff"
             opacity: 0.3
             SequentialAnimation on opacity {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 PauseAnimation { duration: Math.random() * 3000 }
                 NumberAnimation { to: 0.9; duration: 900 + Math.random() * 1500; easing.type: Easing.InOutSine }
@@ -110,7 +110,7 @@ Item {
         color: "#ffd479"
         strength: 0.7
         SequentialAnimation on scale {
-            running: root.active && sunGlow.visible
+            running: root.active && !Theme.reduceMotion && sunGlow.visible
             loops: Animation.Infinite
             NumberAnimation { to: 1.08; duration: 3500; easing.type: Easing.InOutSine }
             NumberAnimation { to: 0.96; duration: 3500; easing.type: Easing.InOutSine }
@@ -162,7 +162,7 @@ Item {
             property real drift: 0
             x: -width + (root.width + width) * ((drift + phase) % 1)
             NumberAnimation on drift {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 from: 0; to: 1
                 duration: 60000 + Math.random() * 40000
@@ -187,7 +187,7 @@ Item {
                 GradientStop { position: 1.0; color: "transparent" }
             }
             SequentialAnimation on x {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 NumberAnimation { from: -root.width * 0.6; to: 0; duration: 14000 + index * 3000; easing.type: Easing.InOutSine }
                 NumberAnimation { from: 0; to: -root.width * 0.6; duration: 14000 + index * 3000; easing.type: Easing.InOutSine }
@@ -212,7 +212,7 @@ Item {
             x: fx * (root.width + 40)
             y: -len
             NumberAnimation on y {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 from: -drop.len - drop.fy * root.height
                 to: root.height
@@ -238,14 +238,14 @@ Item {
             opacity: 0.35 + Math.random() * 0.45
             x: baseX + Math.sin(sway) * 12
             NumberAnimation on y {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 from: -10 - flake.fy * root.height
                 to: root.height
                 duration: 6000 + Math.random() * 5000
             }
             NumberAnimation on sway {
-                running: root.active
+                running: root.active && !Theme.reduceMotion
                 loops: Animation.Infinite
                 from: 0; to: Math.PI * 2
                 duration: 3000 + Math.random() * 3000
@@ -262,7 +262,7 @@ Item {
         visible: root.scene === "storm"
     }
     Timer {
-        running: root.active && root.scene === "storm"
+        running: root.active && !Theme.reduceMotion && root.scene === "storm"
         repeat: true
         interval: 5000
         onTriggered: { interval = 3500 + Math.random() * 6000; strike.restart() }

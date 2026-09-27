@@ -133,10 +133,12 @@ Item {
             }
         }
         SequentialAnimation {
-            running: badge.charging && badge.shown
+            running: badge.charging && badge.shown && !Theme.reduceMotion
             loops: Animation.Infinite
             NumberAnimation { target: band; property: "y"; from: shine.height; to: -band.height; duration: 1100; easing.type: Easing.InOutSine }
-            PauseAnimation { duration: 900 }
+            // Long rest between sweeps: each sweep re-renders the layered
+            // mask effect every frame (~10 % CPU when it looped every 2 s).
+            PauseAnimation { duration: 4500 }
         }
     }
     BoltShape {

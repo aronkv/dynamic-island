@@ -21,10 +21,7 @@ ColumnLayout {
     spacing: 12
 
     readonly property color levelColor: {
-        if (!monitor) return "#ffffff"
-        if (monitor.charging || monitor.state === UPowerDeviceState.FullyCharged) return "#32d74b"
-        if (monitor.profile === PowerProfile.PowerSaver) return "#ffd60a"
-        if (monitor.percentage <= 20) return "#ff453a"
+        // Monochrome panel: the level is always white.
         return "#ffffff"
     }
 
@@ -83,6 +80,7 @@ ColumnLayout {
             opacity: 0.9
 
             Rectangle {
+                id: fillRect
                 x: 3
                 y: 3
                 height: parent.height - 6
@@ -105,12 +103,28 @@ ColumnLayout {
             opacity: 0.6
         }
 
-        Text {
+        // Charging bolt, two-tone: black where it sits on the white fill,
+        // white over the empty part — split exactly at the fill's edge.
+        Item {
+            id: boltArea
             anchors.centerIn: body
+            width: 14
+            height: 14
             visible: glyph.bolt
-            text: "⚡"
-            color: "#000000"
-            font.pixelSize: 12
+            readonly property real split: Math.max(0, Math.min(width, body.x + fillRect.x + fillRect.width - x))
+            Item {
+                width: boltArea.split
+                height: parent.height
+                clip: true
+                BoltShape { width: boltArea.width; height: boltArea.height; color: "#000000" }
+            }
+            Item {
+                x: boltArea.split
+                width: boltArea.width - boltArea.split
+                height: parent.height
+                clip: true
+                BoltShape { x: -boltArea.split; width: boltArea.width; height: boltArea.height; color: "#ffffff" }
+            }
         }
     }
 
@@ -182,7 +196,7 @@ ColumnLayout {
                 Text {
                     anchors.right: parent.right
                     text: panel.monitor ? panel.monitor.powerDraw.toFixed(1) + " W" : ""
-                    color: panel.monitor && panel.monitor.charging ? "#32d74b" : "#ffffff"
+                    color: "#ffffff"
                     font.pixelSize: 18
                     font.weight: 600
                     font.family: "SF Pro Display"
@@ -359,7 +373,7 @@ ColumnLayout {
                 width: segmentTrack.segmentWidth
                 height: parent.height - 6
                 radius: 8
-                color: segmentTrack.activeIndex === 0 ? "#ffd60a" : "#ffffff"
+                color: "#ffffff"
                 Behavior on x { enabled: panel.animate; SpringAnimation { spring: 4; damping: 0.35 } }
                 Behavior on color { ColorAnimation { duration: 200 } }
             }

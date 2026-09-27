@@ -17,8 +17,12 @@ Item {
     // fallback below — that fallback exists for the opposite gap (a mic
     // capture PipeWire itself doesn't see), so both checks need this same
     // cava exclusion independently.
+    // Same for the screen recorder: gpu-screen-recorder's system-audio
+    // capture is an input stream named "gsr-default_output" on the sink
+    // monitor. Excluded here; if the recording also takes the mic, the pactl
+    // check below still sees a real (non-monitor) source and lights the badge.
     readonly property bool pipewireActive: Pipewire.nodes.values.some(n =>
-        n.isStream && n.type === PwNodeType.AudioInStream && n.name !== "cava"
+        n.isStream && n.type === PwNodeType.AudioInStream && n.name !== "cava" && !n.name.startsWith("gsr-")
     )
 
     // Secondary pactl-based check, OR'd into `active` below — a fallback

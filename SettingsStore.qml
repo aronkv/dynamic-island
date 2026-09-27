@@ -26,6 +26,21 @@ Item {
     property alias autoLowPower: adapter.autoLowPower
     // Calculator: show the history column permanently (else via its button).
     property alias calcHistoryAlways: adapter.calcHistoryAlways
+    // "Rain in ~15 min" alert in the island (WeatherMonitor minutely data).
+    property alias rainAlert: adapter.rainAlert
+    property alias reduceMotion: adapter.reduceMotion
+    // Night Shift (NightLight.qml / hyprsunset).
+    property alias nightLight: adapter.nightLight
+    // Screen recording (gpu-screen-recorder, read when a recording starts).
+    property alias recordResolution: adapter.recordResolution   // "native" | "1080" | "720" | "480"
+    property alias recordFps: adapter.recordFps                 // 30 | 60
+    property alias recordQuality: adapter.recordQuality         // "medium" | "high" | "very_high" | "ultra"
+    property alias recordSystemAudio: adapter.recordSystemAudio
+    property alias recordMic: adapter.recordMic
+    property alias recordCursor: adapter.recordCursor
+    property alias nightLightTemp: adapter.nightLightTemp
+    property alias nightLightSchedule: adapter.nightLightSchedule   // "sunset" | "always"
+    property alias obsidianFollowTheme: adapter.obsidianFollowTheme   // Island theme: follow accent vs static Apple
     // Folder the Wallpaper switcher browses for images — created on first
     // use if missing, so a fresh install still has somewhere to point at.
     property alias wallpaperFolder: adapter.wallpaperFolder
@@ -90,6 +105,18 @@ Item {
             property string idlePlayerMode: "art"
             property bool autoLowPower: true
             property bool calcHistoryAlways: false
+            property bool rainAlert: true
+            property bool reduceMotion: false
+            property bool nightLight: false
+            property string recordResolution: "native"
+            property int recordFps: 60
+            property string recordQuality: "very_high"
+            property bool recordSystemAudio: true
+            property bool recordMic: false
+            property bool recordCursor: true
+            property int nightLightTemp: 4000
+            property string nightLightSchedule: "sunset"
+            property bool obsidianFollowTheme: true
             property string wallpaperFolder: Quickshell.env("HOME") + "/Pictures/Wallpapers"
             property string pillMode: "pill"
             property bool weatherManualLocation: false

@@ -83,7 +83,7 @@ PanelWindow {
     // underlying state, and fighting over it silently lost whichever
     // wrote second. Keeping only the direct WlrKeyboardFocus binding (no
     // `focusable` anywhere) avoids that regardless of which value is used.
-    WlrLayershell.keyboardFocus: (island.textEntryActive || island.wallpaperNavActive || island.powerMenuOpen || island.launcherOpen || island.clipboardOpen)
+    WlrLayershell.keyboardFocus: (island.textEntryActive || island.wallpaperNavActive || island.powerMenuOpen || island.launcherOpen || island.clipboardOpen || island.notificationsOpen || island.systemOpen)
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
 
@@ -93,7 +93,7 @@ PanelWindow {
     // island clears the grab → the panel closes and the clicked window gets
     // the focus (Spotlight behavior). An Exclusive→OnDemand hand-off was
     // tried first: Hyprland drops the layer's focus on that switch.
-    readonly property bool typeFirstPanelOpen: island.launcherOpen || island.powerMenuOpen || island.clipboardOpen
+    readonly property bool typeFirstPanelOpen: island.launcherOpen || island.powerMenuOpen || island.clipboardOpen || island.notificationsOpen || island.systemOpen
         || (island.overviewPanelOpen && quickOverviewPanel.activeView === "calculator")
         || (island.overviewPanelOpen && quickOverviewPanel.activeView === "calendar")
         || (island.overviewPanelOpen && quickOverviewPanel.activeView === "shortcuts")
@@ -199,6 +199,16 @@ PanelWindow {
         id: matugenMonitor
     }
 
+    NotificationStore {
+        id: notificationStore
+    }
+
+    Binding {
+        target: Theme
+        property: "reduceMotion"
+        value: settingsStore.reduceMotion
+    }
+
     ArtColor {
         id: artColor
         x: 0
@@ -246,6 +256,34 @@ PanelWindow {
         settingsStore: settingsStore
     }
 
+    // System stats, polled only while the System panel is open.
+    SystemMonitor {
+        id: systemMonitor
+        active: island.systemOpen
+    }
+
+    // Night Shift (hyprsunset), driven by Settings.
+    NightLight {
+        id: nightLight
+        settingsStore: settingsStore
+        weather: weatherMonitor
+    }
+
+    // Live activities: screen recording, timers (ActivityStore.qml).
+    ActivityStore {
+        id: activityStore
+        settingsStore: settingsStore
+    }
+
+    // Rain alert: notify once when rain becomes imminent.
+    Connections {
+        target: weatherMonitor
+        function onRainSoonChanged() {
+            if (weatherMonitor.rainSoon && settingsStore.rainAlert)
+                activityStore.notify("Rain soon", "Rain expected in about " + Math.max(1, weatherMonitor.rainInMinutes) + " minutes.", "weather-showers-symbolic")
+        }
+    }
+
     NetworkMonitor {
         id: networkMonitor
     }
@@ -276,10 +314,16 @@ PanelWindow {
     property bool launcherOpen: false
     // Clipboard history (ClipboardPanel.qml), same exclusivity.
     property bool clipboardOpen: false
+    // Notification history (NotificationsPanel.qml).
+    property bool notificationsOpen: false
+    // Expanded live activities (ActivityPanel.qml).
+    property bool activityOpen: false
+    // System monitor (SystemPanel.qml).
+    property bool systemOpen: false
     // `qs ipc call weather preview <code> <day>` override for the backdrop.
     property int weatherPreviewCode: -1
     property bool weatherPreviewDay: true
-    onMediaExpandedRequestedChanged: if (mediaExpandedRequested) { powerMenuOpen = false; launcherOpen = false; clipboardOpen = false }
+    onMediaExpandedRequestedChanged: if (mediaExpandedRequested) { powerMenuOpen = false; launcherOpen = false; clipboardOpen = false; notificationsOpen = false; activityOpen = false; systemOpen = false }
     property bool volumeActive: false
     property bool brightnessActive: false
     property bool screenshotActive: false
@@ -352,6 +396,9 @@ PanelWindow {
         island.powerMenuOpen = false
         island.launcherOpen = false
         island.clipboardOpen = false
+        island.notificationsOpen = false
+        island.activityOpen = false
+        island.systemOpen = false
         island.localSendActive = false
     }
 
@@ -480,6 +527,59 @@ PanelWindow {
         id: chargingCollapseTimer
         interval: 3400
         onTriggered: island.chargingActive = false
+    }
+
+    // ── Low battery (LowBatteryView) ──────────────────────────────────
+    // Fires once per threshold (20 → 10 → 5 → 1 %) as the level drops on
+    // battery; plugging in resets it. 20/10 collapse by themselves, 5/1
+    // stay until dismissed or plugged in. Startup never fires: the bucket
+    // the battery is already in counts as announced.
+    property bool lowBatteryActive: false
+    property int lowBatteryLevel: 20
+    property int _lowBatteryAnnounced: 101
+    readonly property var _lowBatteryThresholds: [20, 10, 5, 1]
+    function _lowBatteryBucket(pct) {
+        let b = 101
+        for (const t of _lowBatteryThresholds) if (pct <= t) b = t
+        return b
+    }
+    // quiet: re-show without sound / Low Power switch (pill tap, IPC test).
+    function showLowBattery(level, quiet) {
+        lowBatteryLevel = level
+        lowBatteryActive = true
+        if (level >= 10) lowBatteryCollapseTimer.restart()
+        else lowBatteryCollapseTimer.stop()
+        if (quiet) return
+        // Auto Low Power already switches at 20 % (BatteryMonitor). Level 10
+        // nudges once more in case it was turned back off since then.
+        if (level === 10 && settingsStore.autoLowPower) batteryMonitor.forceLowPower()
+        lowBatterySound.command = ["pw-play", "/usr/share/sounds/freedesktop/stereo/" + (level >= 10 ? "dialog-warning.oga" : "dialog-error.oga")]
+        lowBatterySound.running = true
+    }
+    Timer {
+        id: lowBatteryCollapseTimer
+        interval: island.lowBatteryLevel >= 20 ? 7000 : 9000
+        onTriggered: island.lowBatteryActive = false
+    }
+    Timer { id: lowBatteryReadyTimer; interval: 2500; running: true; onTriggered: island._lowBatteryAnnounced = batteryMonitor.onBattery ? island._lowBatteryBucket(batteryMonitor.percentage) : 101 }
+    Process { id: lowBatterySound }
+    Process { id: lowBatterySleepProc }
+    Timer { id: lowBatterySleepTimer; interval: 600; onTriggered: { lowBatterySleepProc.command = ["systemctl", "suspend"]; lowBatterySleepProc.running = true } }
+    Connections {
+        target: batteryMonitor
+        function onPercentageChanged() {
+            if (lowBatteryReadyTimer.running || !batteryMonitor.onBattery) return
+            const b = island._lowBatteryBucket(batteryMonitor.percentage)
+            if (b < island._lowBatteryAnnounced) {
+                island._lowBatteryAnnounced = b
+                island.showLowBattery(b)
+            }
+        }
+        function onPluggedInChanged() {
+            if (!batteryMonitor.pluggedIn) return
+            island._lowBatteryAnnounced = 101
+            island.lowBatteryActive = false
+        }
     }
 
     Timer {
@@ -622,9 +722,13 @@ PanelWindow {
         if (micMuteActive) return "micmute"
         if (capslockActive) return "capslock"
         if (chargingActive) return "charging"
+        if (lowBatteryActive) return "lowbattery"
         if (powerMenuOpen) return "power"
         if (launcherOpen) return "launcher"
         if (clipboardOpen) return "clipboard"
+        if (notificationsOpen) return "notifications"
+        if (activityOpen) return "activity"
+        if (systemOpen) return "system"
         if (notificationActive) return "notification"
         if (screenshotActive) return "screenshot"
         // An incoming transfer awaiting accept/reject (Extension 24) needs
@@ -663,7 +767,7 @@ PanelWindow {
     // that stale sub-view instead of the plain root.
     onOverviewPanelOpenChanged: {
         if (!overviewPanelOpen) quickOverviewPanel.activeView = "overview"
-        else { powerMenuOpen = false; launcherOpen = false; clipboardOpen = false }
+        else { powerMenuOpen = false; launcherOpen = false; clipboardOpen = false; notificationsOpen = false; activityOpen = false; systemOpen = false }
     }
 
     // Fixed window size: the actual Wayland surface never resizes, only the
@@ -703,11 +807,9 @@ PanelWindow {
         keepOnReload: false
 
         onNotification: (n) => {
-            // Only the one on screen stays tracked; releasing the previous
-            // one stops them piling up forever.
-            if (island.currentNotification && island.currentNotification !== n)
-                island.currentNotification.tracked = false
-            n.tracked = true
+            // History (NotificationStore) keeps it tracked — the 20 newest
+            // stay live so their actions can still be invoked from SUPER+N.
+            notificationStore.add(n)
             island.currentNotification = n
             // Do Not Disturb still tracks the notification (available to
             // whatever reads currentNotification later) — it only suppresses
@@ -768,6 +870,43 @@ PanelWindow {
     }
 
     IpcHandler {
+        target: "system"
+        function toggle(): void {
+            const open = !island.systemOpen
+            island.closeAllPanels()
+            island.systemOpen = open
+        }
+    }
+
+    IpcHandler {
+        target: "activity"
+        function toggle(): void {
+            const open = !island.activityOpen
+            island.closeAllPanels()
+            island.activityOpen = open
+        }
+        function record(): void { activityStore.toggleRecording() }
+        // `qs ipc call activity timer 5m` — also "90s", "1h30m", "25", "1:30".
+        function timer(duration: string): void {
+            const secs = activityStore.parseDuration(duration)
+            if (secs > 0) activityStore.startTimer(secs)
+        }
+        function stopwatch(): void { activityStore.startStopwatch() }
+        function pomodoro(): void { activityStore.startPomodoro() }
+        function stop(): void { activityStore.stopTimer() }
+    }
+
+    IpcHandler {
+        target: "notifications"
+        function clear(): void { notificationStore.clearAll() }
+        function toggle(): void {
+            const open = !island.notificationsOpen
+            island.closeAllPanels()
+            island.notificationsOpen = open
+        }
+    }
+
+    IpcHandler {
         target: "launcher"
         function toggle(): void {
             const open = !island.launcherOpen
@@ -786,9 +925,29 @@ PanelWindow {
     }
 
     IpcHandler {
+        target: "wifi"
+        function toggle(): void {
+            island.overviewPanelOpen = !island.overviewPanelOpen
+            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "wifi"
+            island.mediaExpandedRequested = false
+        }
+        // Opens the Wi-Fi panel and toggles the password-share sheet (QR).
+        function share(): void {
+            island.overviewPanelOpen = true
+            quickOverviewPanel.activeView = "wifi"
+            island.mediaExpandedRequested = false
+            quickOverviewPanel.wifiShare()
+        }
+    }
+
+    IpcHandler {
         target: "battery"
         // Plays the plug-in animation without touching the charger.
         function chargeTest() { island.showChargingAnimation() }
+        // Shows the low-battery alert for 20 / 10 / 5 / 1 (no profile or
+        // brightness change, no sound).
+        function lowTest(level: int) { island.showLowBattery(level, true) }
+        function lowDismiss() { island.lowBatteryActive = false }
         function toggle() {
             island.overviewPanelOpen = !island.overviewPanelOpen
             if (island.overviewPanelOpen) quickOverviewPanel.activeView = "battery"
@@ -809,6 +968,13 @@ PanelWindow {
             quickOverviewPanel.activeView = "calculator"
             island.mediaExpandedRequested = false
             quickOverviewPanel.calcSetExpression(expr)
+        }
+        // Open the calculator with its "what can I type" help sheet.
+        function help() {
+            island.overviewPanelOpen = true
+            quickOverviewPanel.activeView = "calculator"
+            island.mediaExpandedRequested = false
+            quickOverviewPanel.calcShowHelp()
         }
     }
 
@@ -994,8 +1160,12 @@ PanelWindow {
                 case "volume": return 300
                 case "brightness": return 300
                 case "charging": return 370
+                case "lowbattery": return 430
                 case "power": return 440
                 case "launcher": return 540
+                case "notifications": return 460
+                case "activity": return 460
+                case "system": return 500
                 case "clipboard": return 560
                 case "screenshot": return 220
                 case "localsend": return 280
@@ -1042,7 +1212,7 @@ PanelWindow {
                     if (quickOverviewPanel.activeView === "bluetooth") return 422
                     if (quickOverviewPanel.activeView === "battery") return 385
                     if (quickOverviewPanel.activeView === "settings") return 482
-                    if (quickOverviewPanel.activeView === "calculator") return (quickOverviewPanel.calcHistoryVisible ? 260 : 186) + (quickOverviewPanel.calcGraphVisible ? 150 : 0) + (quickOverviewPanel.calcSubVisible ? 18 : 0)
+                    if (quickOverviewPanel.activeView === "calculator") return Math.max(quickOverviewPanel.calcHistoryVisible ? 300 : 0, Math.ceil(quickOverviewPanel.calcNaturalHeight) + 28)
                     if (quickOverviewPanel.activeView === "weather") return 522
                     if (quickOverviewPanel.activeView === "calendar") return 400
                     // Shrunk from 460 (2026-09-20): that height was sized for
@@ -1065,8 +1235,12 @@ PanelWindow {
                 case "volume": return 64
                 case "brightness": return 64
                 case "charging": return 72
+                case "lowbattery": return 116
                 case "power": return 196
                 case "launcher": return 470
+                case "system": return 478
+                case "activity": return activityStore.timerActive ? (activityStore.recording ? 190 : 150) : (activityStore.recording ? 190 : 150)
+                case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
                 case "screenshot": return 150
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 210 : 190
@@ -1079,8 +1253,9 @@ PanelWindow {
 
         // Spring, not a fixed-duration ease: the iPhone island's signature
         // slightly-elastic morph between states.
-        Behavior on width { SpringAnimation { spring: Theme.springStiffness; damping: Theme.springDamping; epsilon: 0.3 } }
-        Behavior on height { SpringAnimation { spring: Theme.springStiffness; damping: Theme.springDamping; epsilon: 0.3 } }
+        // Reduce motion: a stiff, critically damped spring = quick, no overshoot.
+        Behavior on width { SpringAnimation { spring: Theme.reduceMotion ? 12 : Theme.springStiffness; damping: Theme.reduceMotion ? 1 : Theme.springDamping; epsilon: 0.3 } }
+        Behavior on height { SpringAnimation { spring: Theme.reduceMotion ? 12 : Theme.springStiffness; damping: Theme.reduceMotion ? 1 : Theme.springDamping; epsilon: 0.3 } }
 
         // Purely hover-tracking, not a click-consuming MouseArea — a
         // HoverHandler never intercepts press/click events, so it can sit
@@ -1234,6 +1409,17 @@ PanelWindow {
             RowLayout {
                 id: clockRow
                 spacing: 12
+
+                // Live activity (recording / timer / rain) — click expands.
+                LiveActivityChip {
+                    store: activityStore
+                    battery: batteryMonitor
+                    weather: weatherMonitor
+                    rainEnabled: settingsStore.rainAlert
+                    accent: island.accentColor
+                    onOpenRequested: { island.closeAllPanels(); island.activityOpen = true }
+                    onBatteryRequested: island.showLowBattery(Math.max(1, island._lowBatteryBucket(batteryMonitor.percentage)), true)
+                }
 
                 Item {
                     id: artSlot
@@ -1698,6 +1884,37 @@ PanelWindow {
             kind: "mic"
             shown: island.displayState === "micmute"
             on: micMuteMonitor.muted
+        }
+
+        // Low battery alert — see LowBatteryView.qml.
+        LowBatteryView {
+            id: lowBatteryContent
+            anchors.fill: parent
+            battery: batteryMonitor
+            level: island.lowBatteryLevel
+            shown: island.displayState === "lowbattery"
+            lowPowerOn: PowerProfiles.profile === PowerProfile.PowerSaver
+            opacity: shown ? 1 : 0
+            scale: shown ? 1 : 0.8
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+            onDismissRequested: island.lowBatteryActive = false
+            onLowPowerRequested: {
+                batteryMonitor.setProfile(PowerProfiles.profile === PowerProfile.PowerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver)
+                lowBatteryCollapseTimer.restart()
+            }
+            onDimRequested: {
+                // Down to step 6 of 20 (≈ 7 % raw) — readable, far less power.
+                const target = 6
+                if (brightnessMonitor.stepIndex > target) brightnessMonitor.step(target - brightnessMonitor.stepIndex)
+                island.lowBatteryActive = false
+            }
+            onSleepRequested: {
+                island.lowBatteryActive = false
+                lockScreen.lock()
+                lowBatterySleepTimer.restart()
+            }
         }
 
         // Charger connected — see ChargingView.qml.
@@ -2248,8 +2465,65 @@ PanelWindow {
             ScaleBehavior on scale {}
         }
 
+        SystemPanel {
+            anchors.fill: parent
+            z: 1
+            mon: systemMonitor
+            active: island.displayState === "system"
+            accent: island.accentColor
+            onCloseRequested: island.systemOpen = false
+            opacity: island.displayState === "system" ? 1 : 0
+            scale: island.displayState === "system" ? 1 : 0.9
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+        }
+
+        ActivityPanel {
+            anchors.fill: parent
+            z: 1
+            store: activityStore
+            weather: weatherMonitor
+            accent: island.accentColor
+            onCloseRequested: island.activityOpen = false
+            opacity: island.displayState === "activity" ? 1 : 0
+            scale: island.displayState === "activity" ? 1 : 0.9
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+        }
+
+        NotificationsPanel {
+            anchors.fill: parent
+            z: 1
+            store: notificationStore
+            active: island.displayState === "notifications"
+            onCloseRequested: island.notificationsOpen = false
+            opacity: island.displayState === "notifications" ? 1 : 0
+            scale: island.displayState === "notifications" ? 1 : 0.9
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+        }
+
+        // Unread-notifications dot in the idle pill's top-right corner.
+        Rectangle {
+            z: 2
+            width: 6
+            height: 6
+            radius: 3
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            y: 8
+            color: island.accentColor
+            opacity: island.displayState === "idle" && notificationStore.unread > 0 && notch.settled ? 1 : 0
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+        }
+
         LauncherPanel {
             id: launcherPanel
+            activity: activityStore
             anchors.fill: parent
             z: 1
             active: island.displayState === "launcher"
@@ -2307,6 +2581,7 @@ PanelWindow {
 
         QuickOverviewPanel {
             id: quickOverviewPanel
+            panelOpen: island.overviewPanelOpen
             anchors.fill: parent
             anchors.margins: 0
             z: 1
@@ -2315,6 +2590,7 @@ PanelWindow {
             bluetoothMonitor: bluetoothMonitor
             settingsStore: settingsStore
             weatherMonitor: weatherMonitor
+            nightLight: nightLight
             calendarStore: calendarStore
             themeProfiles: themeProfiles
             wallpaperMonitor: wallpaperMonitor
@@ -2492,7 +2768,7 @@ PanelWindow {
         IndicatorBadge {
             size: 44
             bgColor: "#000000"
-            icon: "audio-input-microphone-symbolic"
+            shape: "mic"
             iconColor: "#ff9f0a"
             active: micMonitor.active && settingsStore.micIndicatorEnabled
         }
@@ -2500,7 +2776,7 @@ PanelWindow {
         IndicatorBadge {
             size: 44
             bgColor: "#000000"
-            icon: "camera-web-symbolic"
+            shape: "video"
             iconColor: "#32d74b"
             active: cameraMonitor.active && settingsStore.cameraIndicatorEnabled
         }

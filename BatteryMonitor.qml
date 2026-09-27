@@ -48,7 +48,7 @@ Item {
     onTimeToEmptyChanged: _updateTime()
     onTimeToFullChanged: _updateTime()
     onChargingChanged: { _smoothedTime = 0; _updateTime() }
-    onOnBatteryChanged: { _smoothedTime = 0; _updateTime() }
+    onOnBatteryChanged: { _smoothedTime = 0; _updateTime(); _checkAutoLowPower() }
 
     function formatDuration(seconds) {
         if (seconds <= 0) return ""
@@ -109,9 +109,23 @@ Item {
         if (r === PerformanceDegradationReason.HighTemperature) return "high temperature"
         return ""
     }
+    // User-initiated profile change. Below 20 % on battery it also counts as
+    // "I chose this": auto Low Power won't force Power Saver back on until
+    // the next time the charger is plugged in (only the 10 % alert nudges
+    // once more, via forceLowPower()).
     function setProfile(p) {
         _lowPowerAutoApplied = false
+        if (onBattery && percentage <= 20) _lowPowerUserOverride = true
         PowerProfiles.profile = p
+    }
+    // Power Saver on behalf of the island (10 % alert), restored on plug-in
+    // like the 20 % automatic switch.
+    function forceLowPower() {
+        if (!daemonAvailable || profile === PowerProfile.PowerSaver) return
+        if (!_lowPowerAutoApplied) _profileBeforeAuto = profile
+        PowerProfiles.profile = PowerProfile.PowerSaver
+        _lowPowerAutoApplied = true
+        _lowPowerUserOverride = false
     }
 
     // Whether tlp-pd is actually running — without it PowerProfiles has no
@@ -129,10 +143,12 @@ Item {
     // in — but only if this monitor was the one that switched it.
     readonly property bool autoLowPower: settingsStore ? settingsStore.autoLowPower : true
     property bool _lowPowerAutoApplied: false
+    property bool _lowPowerUserOverride: false
     property int _profileBeforeAuto: PowerProfile.Balanced
     function _checkAutoLowPower() {
         if (!autoLowPower || !device || !daemonAvailable) return
-        if (onBattery && percentage <= 20 && !_lowPowerAutoApplied && profile !== PowerProfile.PowerSaver) {
+        if (!onBattery) _lowPowerUserOverride = false
+        if (onBattery && percentage <= 20 && !_lowPowerAutoApplied && !_lowPowerUserOverride && profile !== PowerProfile.PowerSaver) {
             _profileBeforeAuto = profile
             PowerProfiles.profile = PowerProfile.PowerSaver
             _lowPowerAutoApplied = true

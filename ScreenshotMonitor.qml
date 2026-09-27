@@ -23,7 +23,8 @@ Item {
 
     Process {
         id: checkProc
-        command: ["sh", "-c", "ls -t " + Quickshell.env("HOME") + "/Pictures/Screenshots 2>/dev/null | head -1"]
+        // Folder as a positional arg (not spliced into the script).
+        command: ["sh", "-c", "ls -t \"$1\" 2>/dev/null | head -1", "sh", Quickshell.env("HOME") + "/Pictures/Screenshots"]
 
         stdout: StdioCollector {
             waitForEnd: true

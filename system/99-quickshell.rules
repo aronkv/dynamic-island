@@ -1,0 +1,6 @@
+# Quickshell (the Dynamic Island) is the desktop UI, not a background service.
+# CachyOS's default ananicy-cpp rules (dank-material-shell.rules) mark "qs" as
+# "Service" (nice 10, ionice 6), which starves its render thread whenever
+# anything else runs — the island stutters, worst on slower power profiles.
+# Same class as kitty: interactive, nice -4.
+{ "name": "qs", "type": "Doc-View" }

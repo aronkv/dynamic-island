@@ -8,9 +8,9 @@ import QtQuick
 Behavior {
     id: fb
     SequentialAnimation {
-        PauseAnimation { duration: fb.targetValue > 0.5 ? 70 : 0 }
+        PauseAnimation { duration: fb.targetValue > 0.5 && !Theme.reduceMotion ? 70 : 0 }
         NumberAnimation {
-            duration: fb.targetValue > 0.5 ? 230 : 70
+            duration: Theme.reduceMotion ? 120 : fb.targetValue > 0.5 ? 230 : 70
             easing.type: fb.targetValue > 0.5 ? Easing.OutCubic : Easing.InQuad
         }
     }

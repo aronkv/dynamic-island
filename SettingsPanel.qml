@@ -10,6 +10,7 @@ ColumnLayout {
     id: panel
     property var store: null
     property var weatherMonitor: null
+    property var nightLight: null
     signal closeRequested()
     spacing: 12
 
@@ -144,6 +145,12 @@ ColumnLayout {
         }
     }
 
+    // Segment highlights only animate right after a click. Otherwise their
+    // x (a fraction of the track width) would visibly slide while the island
+    // grows around the panel on open.
+    property bool segAnim: false
+    Timer { id: segAnimOff; interval: 450; onTriggered: panel.segAnim = false }
+
     component SegmentButton: Item {
         id: btn
         property string label: ""
@@ -166,7 +173,70 @@ ColumnLayout {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: btn.clicked()
+            onClicked: { panel.segAnim = true; segAnimOff.restart(); btn.clicked() }
+        }
+    }
+
+    // Segmented control with a sliding white highlight (same look as the
+    // Night Shift schedule / now-playing tracks).
+    component SegTrack: Rectangle {
+        id: seg
+        property var labels: []
+        property var values: []
+        property var current
+        signal picked(var value)
+        readonly property int idx: Math.max(0, values.indexOf(current))
+        readonly property real segW: (width - 6) / Math.max(1, labels.length)
+        Layout.fillWidth: true
+        implicitHeight: 30
+        radius: 9
+        color: Theme.cardElevated
+        Rectangle {
+            x: 3 + seg.idx * seg.segW
+            y: 3
+            width: seg.segW
+            height: parent.height - 6
+            radius: 7
+            color: "#ffffff"
+            Behavior on x { enabled: panel.segAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180; easing.type: Easing.OutCubic } }
+        }
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 3
+            spacing: 0
+            Repeater {
+                model: seg.labels
+                SegmentButton {
+                    required property int index
+                    required property string modelData
+                    label: modelData
+                    active: seg.idx === index
+                    onClicked: seg.picked(seg.values[index])
+                }
+            }
+        }
+    }
+
+    component SegRow: Item {
+        id: segRow
+        property string label: ""
+        default property alias track: slot.data
+        Layout.fillWidth: true
+        implicitHeight: 44
+        Text {
+            x: 12
+            anchors.verticalCenter: parent.verticalCenter
+            width: 82
+            text: segRow.label
+            color: "#ffffff"
+            font.pixelSize: 13
+            font.family: Theme.fontText
+        }
+        RowLayout {
+            id: slot
+            x: 100
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 112
         }
     }
 
@@ -174,7 +244,6 @@ ColumnLayout {
         Layout.fillWidth: true
         icon: "emblem-system-symbolic"
         title: "Settings"
-        subtitle: "Saved automatically"
         showToggle: false
         showRefresh: false
         showSettingsGear: false
@@ -224,6 +293,116 @@ ColumnLayout {
                 }
             }
 
+            SectionTitle { text: "DISPLAY" }
+            Group {
+                Row {
+                    icon: "weather-clear-night-symbolic"
+                    tint: Theme.orange
+                    label: "Night Shift"
+                    subtitle: panel.nightLight && !panel.nightLight.available ? "Needs hyprsunset: sudo pacman -S hyprsunset"
+                        : panel.store && panel.store.nightLightSchedule === "always" ? "Warmer colors, always on"
+                        : "Warmer colors from sunset to sunrise"
+                    checked: panel.store ? panel.store.nightLight : false
+                    onToggled: if (panel.store) panel.store.nightLight = !panel.store.nightLight
+                }
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: 86
+                    visible: panel.store ? panel.store.nightLight : false
+
+                    Rectangle {
+                        id: nsTrack
+                        x: 50
+                        y: 4
+                        width: parent.width - 62
+                        height: 30
+                        radius: 9
+                        color: Theme.cardElevated
+                        readonly property int idx: panel.store && panel.store.nightLightSchedule === "always" ? 1 : 0
+                        Rectangle {
+                            x: 3 + nsTrack.idx * (nsTrack.width - 6) / 2
+                            y: 3
+                            width: (nsTrack.width - 6) / 2
+                            height: parent.height - 6
+                            radius: 7
+                            color: "#ffffff"
+                            Behavior on x { enabled: panel.segAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180; easing.type: Easing.OutCubic } }
+                        }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            spacing: 0
+                            SegmentButton { label: "Sunset to Sunrise"; active: nsTrack.idx === 0; onClicked: if (panel.store) panel.store.nightLightSchedule = "sunset" }
+                            SegmentButton { label: "Always"; active: nsTrack.idx === 1; onClicked: if (panel.store) panel.store.nightLightSchedule = "always" }
+                        }
+                    }
+
+                    // Warmth slider: 6000 K (less warm) → 2500 K (more warm).
+                    RowLayout {
+                        x: 50
+                        y: 46
+                        width: parent.width - 62
+                        spacing: 8
+                        Text { text: "Less warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
+                        Item {
+                            id: warmth
+                            Layout.fillWidth: true
+                            implicitHeight: 24
+                            readonly property real value: panel.store ? (6000 - panel.store.nightLightTemp) / 3500 : 0.57
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: 6
+                                radius: 3
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0; color: "#ffe6c7" }
+                                    GradientStop { position: 1; color: "#ff9f0a" }
+                                }
+                            }
+                            Rectangle {
+                                width: 20
+                                height: 20
+                                radius: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: Math.max(0, Math.min(1, warmth.value)) * (warmth.width - width)
+                                color: "#ffffff"
+                                border.color: Qt.rgba(0, 0, 0, 0.2)
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                function setAt(x) {
+                                    const v = Math.max(0, Math.min(1, x / width))
+                                    if (panel.store) panel.store.nightLightTemp = Math.round((6000 - v * 3500) / 100) * 100
+                                }
+                                onPressed: (mouse) => setAt(mouse.x)
+                                onPositionChanged: (mouse) => { if (pressed) setAt(mouse.x) }
+                            }
+                        }
+                        Text { text: "More warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
+                    }
+                }
+                Separator {}
+                Row {
+                    icon: "view-restore-symbolic"
+                    tint: "#5e5ce6"
+                    label: "Reduce motion"
+                    subtitle: "No springs, slides or ambient animations"
+                    checked: panel.store ? panel.store.reduceMotion : false
+                    onToggled: if (panel.store) panel.store.reduceMotion = !panel.store.reduceMotion
+                }
+                Separator {}
+                Row {
+                    icon: "accessories-text-editor-symbolic"
+                    tint: "#7f6df2"
+                    label: "Obsidian follows theme"
+                    subtitle: panel.store && panel.store.obsidianFollowTheme ? "Island theme uses the current accent" : "Island theme uses Obsidian purple"
+                    checked: panel.store ? panel.store.obsidianFollowTheme : true
+                    onToggled: if (panel.store) panel.store.obsidianFollowTheme = !panel.store.obsidianFollowTheme
+                }
+            }
+
             SectionTitle { text: "NOW PLAYING IN THE ISLAND" }
             Rectangle {
                 id: segTrack
@@ -242,7 +421,7 @@ ColumnLayout {
                     height: parent.height - 6
                     radius: 8
                     color: "#ffffff"
-                    Behavior on x { SpringAnimation { spring: 4; damping: 0.35 } }
+                    Behavior on x { enabled: panel.segAnim; SpringAnimation { spring: 4; damping: 0.35 } }
                 }
 
                 RowLayout {
@@ -253,6 +432,73 @@ ColumnLayout {
                     SegmentButton { label: "Track title"; active: segTrack.activeIndex === 1; onClicked: if (panel.store) panel.store.idlePlayerMode = "title" }
                     SegmentButton { label: "Lyrics"; active: segTrack.activeIndex === 2; onClicked: if (panel.store) panel.store.idlePlayerMode = "lyrics" }
                 }
+            }
+
+            SectionTitle { text: "SCREEN RECORDING" }
+            Group {
+                SegRow {
+                    label: "Resolution"
+                    SegTrack {
+                        labels: ["Native", "1080p", "720p", "480p"]
+                        values: ["native", "1080", "720", "480"]
+                        current: panel.store ? panel.store.recordResolution : "native"
+                        onPicked: (v) => { if (panel.store) panel.store.recordResolution = v }
+                    }
+                }
+                Separator {}
+                SegRow {
+                    label: "Frame rate"
+                    SegTrack {
+                        labels: ["30 fps", "60 fps"]
+                        values: [30, 60]
+                        current: panel.store ? panel.store.recordFps : 60
+                        onPicked: (v) => { if (panel.store) panel.store.recordFps = v }
+                    }
+                }
+                Separator {}
+                SegRow {
+                    label: "Quality"
+                    SegTrack {
+                        labels: ["Medium", "High", "Very high", "Ultra"]
+                        values: ["medium", "high", "very_high", "ultra"]
+                        current: panel.store ? panel.store.recordQuality : "very_high"
+                        onPicked: (v) => { if (panel.store) panel.store.recordQuality = v }
+                    }
+                }
+                Separator {}
+                Row {
+                    icon: "audio-speakers-symbolic"
+                    tint: Theme.blue
+                    label: "System audio"
+                    checked: panel.store ? panel.store.recordSystemAudio : true
+                    onToggled: if (panel.store) panel.store.recordSystemAudio = !panel.store.recordSystemAudio
+                }
+                Separator {}
+                Row {
+                    icon: "audio-input-microphone-symbolic"
+                    tint: Theme.orange
+                    label: "Microphone"
+                    checked: panel.store ? panel.store.recordMic : false
+                    onToggled: if (panel.store) panel.store.recordMic = !panel.store.recordMic
+                }
+                Separator {}
+                Row {
+                    icon: "input-mouse-symbolic"
+                    tint: "#8e8e93"
+                    label: "Show cursor"
+                    checked: panel.store ? panel.store.recordCursor : true
+                    onToggled: if (panel.store) panel.store.recordCursor = !panel.store.recordCursor
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                Layout.leftMargin: 12
+                text: "SUPER+R starts / stops · saved to ~/Videos/Recordings · changes apply to the next recording"
+                color: "#ffffff"
+                opacity: 0.35
+                font.pixelSize: 10
+                font.family: Theme.fontText
+                wrapMode: Text.WordWrap
             }
 
             SectionTitle { text: "NOTIFICATIONS & PRIVACY" }
@@ -297,6 +543,15 @@ ColumnLayout {
 
             SectionTitle { text: "WEATHER" }
             Group {
+                Row {
+                    icon: "weather-showers-symbolic"
+                    tint: Theme.blue
+                    label: "Rain alert"
+                    subtitle: "Heads-up in the island ~15–30 min before rain"
+                    checked: panel.store ? panel.store.rainAlert : false
+                    onToggled: if (panel.store) panel.store.rainAlert = !panel.store.rainAlert
+                }
+                Separator {}
                 Row {
                     icon: "find-location-symbolic"
                     tint: Theme.blue

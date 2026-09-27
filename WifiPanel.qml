@@ -40,21 +40,29 @@ ColumnLayout {
     signal closeRequested()
 
     // ── Share password (QR) ──────────────────────────────────────────
-    // "Tap to share password" on the connected network: reads the saved
+    // "Click to share password" on the connected network: reads the saved
     // PSK with nmcli (argv list) and renders the standard Wi-Fi QR payload
     // (WIFI:T:WPA;S:…;P:…;;) as an SVG via qrencode on stdout, shown as a
     // data: URL — nothing is written to disk. Cleared when closed/hidden.
     property bool shareOpen: false
     property string sharePsk: ""
-    property string shareQr: ""
+    property string shareQr: ""          // non-empty once a code is ready
+    property var shareQrMatrix: []       // rows of booleans (dark modules)
+    property bool shareBig: false        // tap the code to enlarge it
     property bool shareReveal: false
     property string shareError: ""
     onVisibleChanged: if (!visible) closeShare()
-    function closeShare() { shareOpen = false; sharePsk = ""; shareQr = ""; shareReveal = false; shareError = "" }
+    // Closing only collapses the sheet; its content is cleared after the
+    // collapse animation, so nothing inside changes size/text mid-collapse.
+    function closeShare() { shareOpen = false; shareReveal = false; shareClearTimer.restart() }
+    function _clearShare() { sharePsk = ""; shareQr = ""; shareQrMatrix = []; shareBig = false; shareError = "" }
+    Timer { id: shareClearTimer; interval: 380; onTriggered: if (!panel.shareOpen) panel._clearShare() }
     function qrEscape(t) { return t.replace(/([\\;,:"])/g, "\\$1") }
     function toggleShare() {
         if (shareOpen) { closeShare(); return }
         if (!current) return
+        shareClearTimer.stop()
+        _clearShare()
         shareOpen = true
         expandedNetworkName = ""
         if (!isSecured(current)) { makeQr(""); return }
@@ -65,7 +73,10 @@ ColumnLayout {
         sharePsk = psk
         const payload = "WIFI:T:" + (psk !== "" ? "WPA" : "nopass") + ";S:" + qrEscape(current ? current.name : "")
             + ";" + (psk !== "" ? "P:" + qrEscape(psk) + ";" : "") + ";"
-        qrProc.command = ["qrencode", "-t", "SVG", "-m", "1", "-l", "M", "-o", "-", payload]
+        // ASCII output ("##" = dark module) drawn pixel-exact below: the old
+        // SVG, rasterized at 304 px and drawn at ~152 px without smoothing,
+        // gave uneven module sizes that phone cameras refused to read.
+        qrProc.command = ["qrencode", "-t", "ASCII", "-m", "0", "-l", "M", "-o", "-", payload]
         qrProc.running = true
     }
     Process {
@@ -81,8 +92,17 @@ ColumnLayout {
     Process {
         id: qrProc
         stdout: StdioCollector {
-            onStreamFinished: if (panel.shareOpen && text.indexOf("<svg") !== -1)
-                panel.shareQr = "data:image/svg+xml;utf8," + encodeURIComponent(text)
+            onStreamFinished: {
+                if (!panel.shareOpen) return
+                const rows = text.split("\n").filter(l => l.length > 0).map(l => {
+                    const row = []
+                    for (let i = 0; i + 1 < l.length; i += 2) row.push(l[i] === "#")
+                    return row
+                })
+                if (rows.length < 21) return
+                panel.shareQrMatrix = rows
+                panel.shareQr = "ready"
+            }
         }
     }
 
@@ -809,7 +829,7 @@ ColumnLayout {
                             Text {
                                 width: parent.width
                                 text: panel.current
-                                    ? (panel.shareOpen ? "Tap to hide" : "Tap to share password")
+                                    ? (panel.shareOpen ? "Click to hide" : "Click to share password")
                                     : "Choose a network below"
                                 color: "#ffffff"
                                 opacity: 0.5
@@ -842,70 +862,130 @@ ColumnLayout {
                         }
                     }
 
-                    // Share sheet: QR + name + password.
-                    ColumnLayout {
+                    // Share sheet: QR + name + password. Revealed by animating the
+                    // wrapper height (clipped) + a fade, instead of popping in.
+                    Item {
+                        id: shareWrap
+                        readonly property bool open: panel.shareOpen && panel.current !== null
                         Layout.fillWidth: true
-                        Layout.preferredWidth: statusCol.width
-                        Layout.bottomMargin: 14
-                        spacing: 8
-                        visible: panel.shareOpen && panel.current !== null
+                        Layout.preferredHeight: open ? shareSheet.implicitHeight + 14 : 0
+                        // Open: 340 ms ease-out; close: a quicker 260 ms ease-in.
+                        Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.reduceMotion ? 0 : (shareWrap.open ? 340 : 260); easing.type: shareWrap.open ? Easing.OutCubic : Easing.InCubic } }
+                        clip: true
+                        visible: Layout.preferredHeight > 0.5
+                        opacity: open ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : (shareWrap.open ? 240 : 180); easing.type: Easing.OutCubic } }
 
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.topMargin: 4
-                            implicitWidth: 176
-                            implicitHeight: 176
-                            radius: 14
-                            color: "#ffffff"
-                            Image {
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                source: panel.shareQr
-                                sourceSize.width: 304
-                                sourceSize.height: 304
-                                smooth: false
-                                fillMode: Image.PreserveAspectFit
+                        ColumnLayout {
+                            id: shareSheet
+                            width: statusCol.width
+                            spacing: 8
+
+                            // Fixed-size slot: the layout height doesn't change
+                            // when qrencode's matrix arrives (the card used to
+                            // open at 240 px, then shrink to the integer-module
+                            // size — the "jump").
+                            Item {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.topMargin: 4
+                                implicitWidth: qrCard.width
+                                implicitHeight: qrCard.height
+                            Rectangle {
+                                id: qrCard
+                                // Integer pixels per module + a 4-module white quiet
+                                // zone (the QR standard), so every module is exactly
+                                // the same size on screen. Click to enlarge. Before
+                                // the matrix exists, sized for the typical 33-module
+                                // Wi-Fi code so the size doesn't change on arrival.
+                                readonly property int modules: panel.shareQrMatrix.length > 0 ? panel.shareQrMatrix.length : 33
+                                readonly property int target: panel.shareBig ? Math.min(statusCol.width, 400) : 240
+                                readonly property int px: Math.max(3, Math.floor(target / (modules + 8)))
+                                width: px * (modules + 8)
+                                height: width
+                                radius: 14
+                                color: "#ffffff"
+                                // Animate only the enlarge toggle, never the first layout.
+                                Behavior on width { enabled: panel.shareQr !== ""; NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutCubic } }
+                                // Hidden until the code exists (or an error does), then
+                                // fades/scales in as one piece — it used to show an
+                                // empty white card for a frame before the code popped in.
+                                readonly property bool shown: panel.shareQr !== "" || panel.shareError !== ""
+                                opacity: shown ? 1 : 0
+                                scale: shown ? 1 : 0.9
+                                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
+                                Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 0 : 420; easing.type: Easing.OutQuint } }
+
+                                Shape {
+                                    x: qrCard.px * 4
+                                    y: qrCard.px * 4
+                                    width: qrCard.px * qrCard.modules
+                                    height: width
+                                    visible: panel.shareQr !== ""
+                                    antialiasing: false
+                                    ShapePath {
+                                        strokeWidth: 0
+                                        strokeColor: "transparent"
+                                        fillColor: "#000000"
+                                        PathSvg {
+                                            path: {
+                                                const m = panel.shareQrMatrix, p = qrCard.px
+                                                let d = ""
+                                                for (let y = 0; y < m.length; y++)
+                                                    for (let x = 0; x < m[y].length; x++)
+                                                        if (m[y][x]) d += "M" + (x * p) + " " + (y * p) + "h" + p + "v" + p + "h-" + p + "z"
+                                                return d
+                                            }
+                                        }
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: panel.shareQr !== ""
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: panel.shareBig = !panel.shareBig
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: panel.shareQr === ""
+                                    text: panel.shareError
+                                    color: "#000000"
+                                    opacity: 0.5
+                                    font.pixelSize: 12
+                                    font.family: Theme.fontText
+                                }
+                            }
                             }
                             Text {
-                                anchors.centerIn: parent
-                                visible: panel.shareQr === ""
-                                text: panel.shareError !== "" ? panel.shareError : "…"
-                                color: "#000000"
-                                opacity: 0.5
+                                Layout.alignment: Qt.AlignHCenter
+                                text: panel.current ? panel.current.name : ""
+                                color: "#ffffff"
+                                font.pixelSize: 14
+                                font.weight: 600
+                                font.family: Theme.font
+                            }
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                visible: panel.sharePsk !== ""
+                                text: "Password: " + (panel.shareReveal ? panel.sharePsk : "•".repeat(Math.min(12, panel.sharePsk.length)))
+                                color: "#ffffff"
+                                opacity: 0.55
                                 font.pixelSize: 12
                                 font.family: Theme.fontText
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -6
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: panel.shareReveal = !panel.shareReveal
+                                }
                             }
-                        }
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: panel.current ? panel.current.name : ""
-                            color: "#ffffff"
-                            font.pixelSize: 14
-                            font.weight: 600
-                            font.family: Theme.font
-                        }
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            visible: panel.sharePsk !== ""
-                            text: "Password: " + (panel.shareReveal ? panel.sharePsk : "•".repeat(Math.min(12, panel.sharePsk.length)))
-                            color: "#ffffff"
-                            opacity: 0.55
-                            font.pixelSize: 12
-                            font.family: Theme.fontText
-                            MouseArea {
-                                anchors.fill: parent
-                                anchors.margins: -6
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: panel.shareReveal = !panel.shareReveal
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: panel.sharePsk === "" ? "Open network" : (panel.shareReveal ? "Click to hide" : "Click to show · scan with your phone")
+                                color: "#ffffff"
+                                opacity: 0.3
+                                font.pixelSize: 10
+                                font.family: Theme.fontText
                             }
-                        }
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: panel.sharePsk === "" ? "Open network" : (panel.shareReveal ? "Click to hide" : "Click to show · scan with your phone")
-                            color: "#ffffff"
-                            opacity: 0.3
-                            font.pixelSize: 10
-                            font.family: Theme.fontText
                         }
                     }
 
