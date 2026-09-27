@@ -1,0 +1,127 @@
+/* ThinkRed — fekete-szürke ThinkPad téma, piros akcentussal (TrackPoint red) */
+
+.theme-dark {
+  /* --- Alap háttér / felület réteg (feketétől sötétszürkéig) --- */
+  --background-primary: #0d0d0d;
+  --background-primary-alt: #121212;
+  --background-secondary: #070707;
+  --background-secondary-alt: #0a0a0a;
+  --background-modifier-border: #242424;
+  --background-modifier-border-hover: #2e2e2e;
+  --background-modifier-border-focus: #c8102e;
+  --background-modifier-hover: rgba(255, 255, 255, 0.04);
+  --background-modifier-active-hover: rgba(200, 16, 46, 0.15);
+  --background-modifier-form-field: #121212;
+  --background-modifier-box-shadow: rgba(0, 0, 0, 0.6);
+  --background-modifier-error: #c8102e;
+  --background-modifier-error-rgb: 200, 16, 46;
+  --background-modifier-success: #4caf50;
+  --background-modifier-cover: rgba(0, 0, 0, 0.75);
+
+  /* --- Szöveg --- */
+  --text-normal: #d4d4d4;
+  --text-muted: #8a8a8a;
+  --text-faint: #5c5c5c;
+  --text-on-accent: #ffffff;
+  --text-error: #ff5c5c;
+  --text-accent: #e4002b;
+  --text-accent-hover: #ff2e4d;
+  --text-selection: rgba(200, 16, 46, 0.35);
+  --text-highlight-bg: rgba(228, 0, 43, 0.25);
+
+  /* --- Domináns piros akcentus (TrackPoint red: #E4002B / Lenovo red: #C8102E) --- */
+  --interactive-accent: #c8102e;
+  --interactive-accent-rgb: 200, 16, 46;
+  --interactive-accent-hover: #e4002b;
+  --interactive-hover: #1c1c1c;
+  --interactive-normal: #161616;
+
+  /* --- Fejlécek: enyhén világosabb szürke, piros alcím-jelölő --- */
+  --h1-color: #ececec;
+  --h2-color: #e0e0e0;
+  --h3-color: #d0d0d0;
+  --h4-color: #c8102e;
+  --h5-color: #c8102e;
+  --h6-color: #8a8a8a;
+
+  /* --- Linkek --- */
+  --link-color: #ff3b3b;
+  --link-color-hover: #ff6b6b;
+  --link-unresolved-color: #8a8a8a;
+  --link-external-color: #ff3b3b;
+
+  /* --- Kód / bloklkokok --- */
+  --code-background: #060606;
+  --code-normal: #d4d4d4;
+  --code-comment: #6a6a6a;
+  --code-function: #c8102e;
+  --code-string: #b0b0b0;
+  --code-keyword: #ff3b3b;
+  --code-property: #d4d4d4;
+
+  /* --- Idézetblokk / horizontal rule --- */
+  --blockquote-border-color: #c8102e;
+  --hr-color: #242424;
+
+  /* --- Checkbox / task lista --- */
+  --checkbox-color: #c8102e;
+  --checkbox-color-hover: #e4002b;
+  --checkbox-border-color: #5c5c5c;
+  --checkbox-border-color-hover: #c8102e;
+  --checklist-done-color: #6a6a6a;
+
+  /* --- Fülek (tabs) --- */
+  --tab-background-active: #121212;
+  --tab-text-color-focused-active: #ececec;
+  --tab-outline-color: #c8102e;
+
+  /* --- Scrollbar --- */
+  --scrollbar-thumb-bg: #242424;
+  --scrollbar-active-thumb-bg: #c8102e;
+
+  /* --- Gráf nézet: piros csomópontok szürke háttéren --- */
+  --graph-line: #242424;
+  --graph-node: #8a8a8a;
+  --graph-node-unresolved: #4a4a4a;
+  --graph-node-focused: #ffffff;
+  --graph-node-tag: #c8102e;
+  --graph-node-attachment: #ff3b3b;
+}
+
+/* --- Callout-ok: piros hangsúly, egyéb típusok tompított szürkékkel --- */
+.theme-dark {
+  --callout-default: 200, 16, 46;
+  --callout-note: 200, 16, 46;
+  --callout-info: 140, 140, 140;
+  --callout-todo: 200, 16, 46;
+  --callout-important: 228, 0, 43;
+  --callout-warning: 255, 140, 0;
+  --callout-success: 76, 175, 80;
+  --callout-question: 140, 140, 140;
+  --callout-error: 200, 16, 46;
+  --callout-bug: 200, 16, 46;
+  --callout-example: 140, 140, 140;
+  --callout-quote: 90, 90, 90;
+}
+
+/* --- ThinkPad "TrackPoint" jelölő: aktív fájl / kurzor kiemelés --- */
+.theme-dark .nav-file-title.is-active,
+.theme-dark .nav-folder-title.is-active {
+  background-color: rgba(200, 16, 46, 0.18);
+  color: var(--text-accent);
+}
+
+.theme-dark .cm-cursor,
+.theme-dark .cm-cursor-primary {
+  border-left-color: #c8102e !important;
+}
+
+.theme-dark ::selection {
+  background: rgba(200, 16, 46, 0.35);
+}
+
+/* --- Ribbon / sidebar aktív ikon piros --- */
+.theme-dark .side-dock-ribbon-action.is-active,
+.theme-dark .workspace-tab-header.is-active {
+  color: #e4002b;
+}
