@@ -123,6 +123,7 @@ Item {
                     localSendMonitor.pendingIncoming = {
                         sessionId: payload.sessionId,
                         alias: payload.alias,
+                        deviceType: payload.deviceType || "desktop",
                         files: payload.files || []
                     }
                 } else if (payload.event === "expired" || payload.event === "cancelled") {

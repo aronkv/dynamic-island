@@ -258,6 +258,7 @@ class Handler(BaseHTTPRequestHandler):
 
         session = {
             "alias": info.get("alias", "Unknown device"),
+            "deviceType": info.get("deviceType") or "desktop",
             "files": files,
             "decision": None,
             "event": threading.Event(),
@@ -269,6 +270,7 @@ class Handler(BaseHTTPRequestHandler):
             "event": "incoming",
             "sessionId": session_id,
             "alias": session["alias"],
+            "deviceType": session.get("deviceType", "desktop"),
             "files": [
                 {"fileName": f["fileName"], "size": f["size"]}
                 for f in files.values()

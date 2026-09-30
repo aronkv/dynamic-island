@@ -1168,7 +1168,7 @@ PanelWindow {
                 case "system": return 500
                 case "clipboard": return 560
                 case "screenshot": return 220
-                case "localsend": return 280
+                case "localsend": return localSendMonitor.pendingIncoming !== null ? 360 : 280
                 default:
                     if (island.pillModeEffective === "strip" && !island.stripHovered) return 60
                     return settingsStore.idleWidth > 0 ? settingsStore.idleWidth : (idleRow.implicitWidth + 36)
@@ -1243,7 +1243,7 @@ PanelWindow {
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
                 case "screenshot": return 150
-                case "localsend": return localSendMonitor.pendingIncoming !== null ? 210 : 190
+                case "localsend": return localSendMonitor.pendingIncoming !== null ? 172 : 190
                 default:
                     if (island.pillModeEffective === "strip" && !island.stripHovered) return 6
                     // Bumped from 36, explicit user request.
@@ -1768,77 +1768,178 @@ PanelWindow {
             // Inbound: another LocalSend device wants to push a file to us.
             // No silent auto-accept, per explicit user decision — this is
             // the only way an incoming transfer ever completes.
+            // AirDrop-style card: sender avatar + name, the file(s) with a
+            // type icon and size, then Decline / Accept pills.
             ColumnLayout {
+                id: incomingCard
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 10
                 visible: localSendMonitor.pendingIncoming !== null
 
-                Text {
-                    text: localSendMonitor.pendingIncoming ? (localSendMonitor.pendingIncoming.alias + " wants to send:") : ""
-                    color: "#ffffff"
-                    font.pixelSize: 12
-                    font.weight: 600
-                    font.family: "SF Pro Display"
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
+                readonly property var req: localSendMonitor.pendingIncoming
+                readonly property var files: req ? req.files : []
+                readonly property real totalSize: files.reduce((a, f) => a + (f.size || 0), 0)
+                function fmtSize(b) {
+                    const u = ["B", "KB", "MB", "GB"]
+                    let i = 0
+                    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++ }
+                    return (i === 0 || b >= 100 ? Math.round(b) : b.toFixed(1)) + " " + u[i]
                 }
-
-                Text {
-                    text: localSendMonitor.pendingIncoming
-                        ? localSendMonitor.pendingIncoming.files.map(f => f.fileName).join(", ")
-                        : ""
-                    color: "#ffffff"
-                    opacity: 0.6
-                    font.pixelSize: 11
-                    font.family: "SF Pro Display"
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
+                function mimeIcon(name) {
+                    const ext = (String(name).match(/\.([^.]+)$/) || ["", ""])[1].toLowerCase()
+                    if (/^(png|jpe?g|webp|gif|bmp|svg|heic|avif)$/.test(ext)) return "image-x-generic"
+                    if (/^(mp3|flac|ogg|opus|m4a|wav|aac)$/.test(ext)) return "audio-x-generic"
+                    if (/^(mp4|mkv|webm|mov|avi|m4v)$/.test(ext)) return "video-x-generic"
+                    if (ext === "pdf") return "application-pdf"
+                    if (/^(zip|tar|gz|xz|zst|7z|rar)$/.test(ext)) return "package-x-generic"
+                    if (/^(docx?|odt|rtf|pptx?|xlsx?)$/.test(ext)) return "x-office-document"
+                    return "text-x-generic"
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.topMargin: 4
+                    spacing: 12
+
+                    // Sender avatar: device glyph in a circle.
+                    Rectangle {
+                        implicitWidth: 42
+                        implicitHeight: 42
+                        radius: 21
+                        color: Theme.cardElevated
+                        IconImage {
+                            id: lsDeviceIcon
+                            anchors.centerIn: parent
+                            implicitSize: 20
+                            source: "image://icon/" + (incomingCard.req && incomingCard.req.deviceType === "mobile" ? "phone-symbolic" : "computer-symbolic")
+                            visible: false
+                            layer.enabled: true
+                        }
+                        Rectangle { id: lsDeviceFill; anchors.fill: lsDeviceIcon; color: "#ffffff"; visible: false }
+                        MultiEffect {
+                            anchors.fill: lsDeviceIcon
+                            source: lsDeviceFill
+                            maskEnabled: true
+                            maskSource: lsDeviceIcon
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 0.0
+                            maskThresholdMax: 1.0
+                            maskSpreadAtMax: 0.0
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+                        Text {
+                            Layout.fillWidth: true
+                            text: incomingCard.req ? incomingCard.req.alias : ""
+                            color: "#ffffff"
+                            font.pixelSize: 15
+                            font.weight: 700
+                            font.family: "SF Pro Display"
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: "wants to share " + (incomingCard.files.length === 1 ? "a file" : incomingCard.files.length + " files")
+                            color: "#ffffff"
+                            opacity: 0.5
+                            font.pixelSize: 11
+                            font.family: "SF Pro Text"
+                        }
+                    }
+                }
+
+                // File card.
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 44
+                    radius: 12
+                    color: Theme.card
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 12
+                        spacing: 10
+                        IconImage {
+                            implicitSize: 26
+                            source: incomingCard.files.length > 0
+                                ? Quickshell.iconPath(incomingCard.files.length === 1 ? incomingCard.mimeIcon(incomingCard.files[0].fileName) : "folder", "text-x-generic")
+                                : ""
+                            asynchronous: true
+                            mipmap: true
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: incomingCard.files.length === 1 ? incomingCard.files[0].fileName
+                                : incomingCard.files.length + " files · " + incomingCard.files.map(f => f.fileName).join(", ")
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.weight: 600
+                            font.family: "SF Pro Text"
+                            elide: Text.ElideMiddle
+                        }
+                        Text {
+                            text: incomingCard.fmtSize(incomingCard.totalSize)
+                            color: "#ffffff"
+                            opacity: 0.45
+                            font.pixelSize: 11
+                            font.family: "SF Pro Text"
+                            font.features: { "tnum": 1 }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
                     spacing: 8
 
                     Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: 30
-                        radius: 8
-                        color: "#1a1a1a"
-
+                        implicitHeight: 34
+                        radius: 17
+                        color: declineMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : Qt.rgba(1, 1, 1, 0.08)
+                        scale: declineMouse.pressed ? 0.97 : 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 110 } }
                         Text {
                             anchors.centerIn: parent
-                            text: "Reject"
+                            text: "Decline"
                             color: "#ffffff"
-                            opacity: 0.7
-                            font.pixelSize: 12
+                            font.pixelSize: 13
                             font.weight: 600
-                            font.family: "SF Pro Display"
+                            font.family: "SF Pro Text"
                         }
-
                         MouseArea {
+                            id: declineMouse
                             anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: localSendMonitor.rejectIncoming()
                         }
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: 30
-                        radius: 8
-                        color: island.accentColor
-
+                        implicitHeight: 34
+                        radius: 17
+                        color: acceptMouse.containsMouse ? "#e6e6e6" : "#ffffff"
+                        scale: acceptMouse.pressed ? 0.97 : 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 110 } }
                         Text {
                             anchors.centerIn: parent
                             text: "Accept"
-                            color: island.accentContrastColor
-                            font.pixelSize: 12
-                            font.weight: 600
-                            font.family: "SF Pro Display"
+                            color: "#000000"
+                            font.pixelSize: 13
+                            font.weight: 700
+                            font.family: "SF Pro Text"
                         }
-
                         MouseArea {
+                            id: acceptMouse
                             anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: localSendMonitor.acceptIncoming()
                         }
                     }
