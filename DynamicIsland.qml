@@ -1561,10 +1561,9 @@ PanelWindow {
             readonly property string appIcon: n ? notificationStore.appIconFor(n.appName, n.desktopEntry) : ""
             // A real picture (image hint / image file) → thumbnail on the right;
             // a theme icon → used as the lead icon when the app has none.
+            readonly property string picture: n ? notificationStore.pictureFor(n) : ""
             readonly property string _content: n ? notificationStore._iconFor(n) : ""
-            readonly property bool _isPicture: _content !== "" && (_content.startsWith("file://") || _content.indexOf("/icon/") === -1)
-            readonly property string picture: _isPicture ? _content : ""
-            readonly property string contentIcon: _isPicture ? "" : _content
+            readonly property string contentIcon: _content !== picture ? _content : ""
             readonly property string leadIcon: appIcon !== "" ? appIcon : contentIcon
 
             RowLayout {

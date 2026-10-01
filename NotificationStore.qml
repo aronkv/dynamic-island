@@ -58,6 +58,17 @@ Item {
     function _iconFor(n) {
         return _resolve(n.image) || _resolve(n.appIcon)
     }
+    // A real picture to show as a thumbnail: the image hint, or an icon
+    // *path* that isn't an app icon (screenshots, avatars…). Paths under
+    // icons/, pixmaps/ or logo/ are app icons (kitty sends its logo that
+    // way) — those are already shown as the app icon, not as a picture.
+    function pictureFor(n) {
+        const img = _resolve(n.image)
+        if (img.startsWith("file://") || (img !== "" && img.indexOf("/icon/") === -1)) return img
+        const ic = _resolve(n.appIcon)
+        if (ic.startsWith("file://") && !/\/(icons|pixmaps|logo)\//i.test(ic)) return ic
+        return ""
+    }
 
     // The sending app's own icon (shown top-left of the banner and next to
     // each group in the history), separate from the notification's content
@@ -84,6 +95,7 @@ Item {
             summary: n.summary || "",
             body: (n.body || "").replace(/<[^>]*>/g, ""),
             icon: _iconFor(n),
+            picture: pictureFor(n),
             appIcon: appIconFor(n.appName, n.desktopEntry),
             time: Date.now()
         }

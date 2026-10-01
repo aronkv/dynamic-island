@@ -169,7 +169,7 @@ FocusScope {
                                 // A real picture (album art, screenshot…) is shown
                                 // as a thumbnail; theme icons are already covered
                                 // by the app icon in the group header.
-                                readonly property bool hasImage: modelData.icon.startsWith("file://")
+                                readonly property bool hasImage: (modelData.picture || "") !== ""
 
                                 Rectangle {
                                     id: card
@@ -252,7 +252,7 @@ FocusScope {
                                         color: Theme.cardElevated
                                         Image {
                                             anchors.fill: parent
-                                            source: row.hasImage ? row.modelData.icon : ""
+                                            source: row.hasImage ? row.modelData.picture : ""
                                             sourceSize.width: 88
                                             sourceSize.height: 88
                                             fillMode: Image.PreserveAspectCrop
