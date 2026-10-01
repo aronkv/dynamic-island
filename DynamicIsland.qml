@@ -1170,7 +1170,8 @@ PanelWindow {
                 case "screenshot": return 220
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 360 : 280
                 default:
-                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 60
+                    // Strip mode keeps the island's own width (only the
+                    // height collapses, see targetHeight).
                     return settingsStore.idleWidth > 0 ? settingsStore.idleWidth : (idleRow.implicitWidth + 36)
             }
         }
@@ -1245,7 +1246,7 @@ PanelWindow {
                 case "screenshot": return 150
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 172 : 190
                 default:
-                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 6
+                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 14
                     // Bumped from 36, explicit user request.
                     return settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
             }
@@ -1266,7 +1267,7 @@ PanelWindow {
             onHoveredChanged: island.stripHovered = hovered
         }
 
-        // Strip mode: a thin bar replacing the whole idle pill (clock,
+        // Strip mode: a thin black bar (as wide as the island) replacing the whole idle pill (clock,
         // badges, cava, everything) while collapsed. Hovering it (the
         // HoverHandler above) reveals the full pill for as long as the
         // cursor stays over it; idleRow/idleBadgeLeft/idleBadgeRight below
@@ -1279,14 +1280,8 @@ PanelWindow {
 
             FadeBehavior on opacity {}
 
-            Rectangle {
-                anchors.centerIn: parent
-                width: 32
-                height: 3
-                radius: 1.5
-                color: "#ffffff"
-                opacity: 0.5
-            }
+            // Nothing drawn on top: the strip is just the black notch itself,
+            // island-wide and a few px tall.
         }
 
         MouseArea {
