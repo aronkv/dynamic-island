@@ -110,21 +110,50 @@ FocusScope {
                         Layout.fillWidth: true
                         spacing: 6
 
+                        // Group header: app icon + name, Clear.
                         RowLayout {
                             Layout.fillWidth: true
+                            spacing: 7
+                            readonly property string appIcon: group.modelData.items[0].appIcon !== undefined
+                                ? group.modelData.items[0].appIcon
+                                : (panel.store ? panel.store.appIconFor(group.modelData.app, "") : "")
+                            Item {
+                                implicitWidth: 18
+                                implicitHeight: 18
+                                IconImage {
+                                    anchors.fill: parent
+                                    visible: parent.parent.appIcon !== ""
+                                    source: parent.parent.appIcon
+                                    asynchronous: true
+                                    mipmap: true
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    visible: parent.parent.appIcon === ""
+                                    radius: 5
+                                    color: Theme.cardElevated
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: group.modelData.app.charAt(0).toUpperCase()
+                                        color: "#ffffff"
+                                        font.pixelSize: 10
+                                        font.weight: 700
+                                    }
+                                }
+                            }
                             Text {
-                                text: group.modelData.app.toUpperCase()
+                                text: group.modelData.app
                                 color: "#ffffff"
-                                opacity: 0.45
-                                font.pixelSize: 10
+                                opacity: 0.6
+                                font.pixelSize: 12
                                 font.weight: 600
-                                font.letterSpacing: 0.5
                                 font.family: Theme.fontText
+                                elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
                             TextButton {
                                 text: "Clear"
-                                font.pixelSize: 10
+                                font.pixelSize: 11
                                 onClicked: panel.store.clearApp(group.modelData.app)
                             }
                         }
@@ -137,86 +166,97 @@ FocusScope {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 implicitHeight: card.implicitHeight
-                                clip: false
+                                // A real picture (album art, screenshot…) is shown
+                                // as a thumbnail; theme icons are already covered
+                                // by the app icon in the group header.
+                                readonly property bool hasImage: modelData.icon.startsWith("file://")
 
                                 Rectangle {
                                     id: card
                                     width: parent.width
-                                    implicitHeight: content.implicitHeight + 20
-                                    radius: Theme.radiusMedium
-                                    color: cardHover.hovered ? Qt.rgba(1, 1, 1, 0.1) : Theme.card
+                                    implicitHeight: Math.max(content.implicitHeight, row.hasImage ? 44 : 0) + 22
+                                    radius: 14
+                                    color: cardHover.hovered ? Theme.cardElevated : Theme.card
                                     opacity: 1 - Math.min(0.8, Math.abs(x) / (width * 0.6))
-                                    Behavior on color { ColorAnimation { duration: 120 } }
+                                    Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
                                     Behavior on x { enabled: !swipe.drag.active; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                                     HoverHandler { id: cardHover }
 
-                                    RowLayout {
+                                    ColumnLayout {
                                         id: content
-                                        x: 12
-                                        y: 10
-                                        width: parent.width - 24
-                                        spacing: 10
-
-                                        Item {
-                                            Layout.alignment: Qt.AlignTop
-                                            implicitWidth: 32
-                                            implicitHeight: 32
-                                            IconImage {
-                                                anchors.fill: parent
-                                                visible: row.modelData.icon !== ""
-                                                source: row.modelData.icon
-                                                asynchronous: true
-                                            }
-                                            Rectangle {
-                                                anchors.fill: parent
-                                                visible: row.modelData.icon === ""
-                                                radius: 8
-                                                color: Theme.cardElevated
-                                                Text {
-                                                    anchors.centerIn: parent
-                                                    text: row.modelData.app.charAt(0).toUpperCase()
-                                                    color: "#ffffff"
-                                                    font.pixelSize: 14
-                                                    font.weight: 700
-                                                }
-                                            }
-                                        }
-
-                                        ColumnLayout {
+                                        x: 14
+                                        y: 11
+                                        width: parent.width - 28 - (row.hasImage ? 54 : 0)
+                                        spacing: 2
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 2
-                                            RowLayout {
-                                                Layout.fillWidth: true
-                                                Text {
-                                                    text: row.modelData.summary
-                                                    color: "#ffffff"
-                                                    font.pixelSize: 13
-                                                    font.weight: 600
-                                                    font.family: Theme.font
-                                                    elide: Text.ElideRight
-                                                    Layout.fillWidth: true
-                                                }
-                                                Text {
-                                                    text: panel.ago(row.modelData.time)
-                                                    color: "#ffffff"
-                                                    opacity: 0.4
-                                                    font.pixelSize: 10
-                                                    font.family: Theme.fontText
-                                                }
-                                            }
+                                            spacing: 8
                                             Text {
-                                                visible: text !== ""
-                                                text: row.modelData.body
+                                                text: row.modelData.summary
                                                 color: "#ffffff"
-                                                opacity: 0.7
-                                                font.pixelSize: 12
-                                                font.family: Theme.fontText
-                                                wrapMode: Text.Wrap
-                                                maximumLineCount: 3
+                                                font.pixelSize: 13
+                                                font.weight: 600
+                                                font.family: Theme.font
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
                                             }
+                                            // Time, swapped for ✕ while hovered.
+                                            Item {
+                                                implicitWidth: Math.max(timeText.implicitWidth, 18)
+                                                implicitHeight: 18
+                                                visible: !row.hasImage
+                                                Text {
+                                                    id: timeText
+                                                    anchors.right: parent.right
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: panel.ago(row.modelData.time)
+                                                    color: "#ffffff"
+                                                    opacity: cardHover.hovered ? 0 : 0.4
+                                                    font.pixelSize: 10
+                                                    font.family: Theme.fontText
+                                                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            visible: text !== ""
+                                            text: row.modelData.body
+                                            color: "#ffffff"
+                                            opacity: 0.7
+                                            font.pixelSize: 12
+                                            font.family: Theme.fontText
+                                            wrapMode: Text.Wrap
+                                            maximumLineCount: 3
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Text {
+                                            visible: row.hasImage
+                                            text: panel.ago(row.modelData.time)
+                                            color: "#ffffff"
+                                            opacity: 0.4
+                                            font.pixelSize: 10
+                                            font.family: Theme.fontText
+                                        }
+                                    }
+
+                                    ClippingRectangle {
+                                        visible: row.hasImage
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 12
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 44
+                                        height: 44
+                                        radius: 9
+                                        color: Theme.cardElevated
+                                        Image {
+                                            anchors.fill: parent
+                                            source: row.hasImage ? row.modelData.icon : ""
+                                            sourceSize.width: 88
+                                            sourceSize.height: 88
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
                                         }
                                     }
 
@@ -235,26 +275,31 @@ FocusScope {
                                         onClicked: if (Math.abs(card.x) < 4) panel.store.activate(row.modelData.uid)
                                     }
 
-                                    // ✕ on hover.
+                                    // ✕ inside the card's top-right corner while hovered.
                                     Rectangle {
                                         anchors.top: parent.top
                                         anchors.right: parent.right
-                                        anchors.margins: -6
+                                        anchors.topMargin: 9
+                                        anchors.rightMargin: row.hasImage ? 9 : 11
                                         width: 20
                                         height: 20
                                         radius: 10
-                                        color: Theme.cardElevated
-                                        border.color: Qt.rgba(1, 1, 1, 0.15)
-                                        border.width: 1
-                                        visible: cardHover.hovered
+                                        z: 2
+                                        color: closeMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.16)
+                                        opacity: cardHover.hovered ? 1 : 0
+                                        visible: opacity > 0
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
                                         Text {
                                             anchors.centerIn: parent
                                             text: "✕"
                                             color: "#ffffff"
-                                            font.pixelSize: 10
+                                            font.pixelSize: 9
+                                            font.weight: 700
                                         }
                                         MouseArea {
+                                            id: closeMouse
                                             anchors.fill: parent
+                                            hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: panel.store.remove(row.modelData.uid)
                                         }

@@ -1131,7 +1131,7 @@ PanelWindow {
         readonly property bool settled: Math.abs(width - targetWidth) < 90 && Math.abs(height - targetHeight) < 30
         readonly property real targetWidth: {
             switch (island.displayState) {
-                case "notification": return 360
+                case "notification": return 380
                 case "mediaExpanded": return 460
                 case "overview":
                     // Bluetooth's device grid needs real room — DynamicGlacier's
@@ -1231,7 +1231,7 @@ PanelWindow {
                     // 105 of real content, plus comfortable padding; +10 for
                     // the two connectivity rows with round icons.
                     return 155
-                case "notification": return 110
+                case "notification": return island.currentNotification && String(island.currentNotification.body || "").trim() !== "" ? 86 : 66
                 case "volume": return 64
                 case "brightness": return 64
                 case "charging": return 72
@@ -1544,11 +1544,12 @@ PanelWindow {
             }
         }
 
-        ColumnLayout {
+        // Notification banner (iOS-style): the sending app's icon top-left,
+        // title + "now", up to two lines of body, and a real picture (album
+        // art, screenshot…) as a thumbnail on the right when it has one.
+        Item {
             id: notifContent
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 4
             opacity: island.displayState === "notification" ? 1 : 0
             scale: island.displayState === "notification" ? 1 : 0.8
             visible: opacity > 0
@@ -1556,38 +1557,104 @@ PanelWindow {
             FadeBehavior on opacity {}
             ScaleBehavior on scale {}
 
+            readonly property var n: island.currentNotification
+            readonly property string appIcon: n ? notificationStore.appIconFor(n.appName, n.desktopEntry) : ""
+            // A real picture (image hint / image file) → thumbnail on the right;
+            // a theme icon → used as the lead icon when the app has none.
+            readonly property string _content: n ? notificationStore._iconFor(n) : ""
+            readonly property bool _isPicture: _content !== "" && (_content.startsWith("file://") || _content.indexOf("/icon/") === -1)
+            readonly property string picture: _isPicture ? _content : ""
+            readonly property string contentIcon: _isPicture ? "" : _content
+            readonly property string leadIcon: appIcon !== "" ? appIcon : contentIcon
+
             RowLayout {
-                spacing: 8
-                Layout.fillWidth: true
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.topMargin: 12
+                anchors.bottomMargin: 12
+                spacing: 12
 
-                Text {
-                    text: island.currentNotification ? island.currentNotification.appName : ""
-                    color: island.accentColor
-                    font.pixelSize: 11
-                    font.family: "SF Pro Display"
-                    font.weight: 600
+                Item {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: 38
+                    implicitHeight: 38
+                    IconImage {
+                        anchors.fill: parent
+                        visible: notifContent.leadIcon !== ""
+                        source: notifContent.leadIcon
+                        asynchronous: true
+                        mipmap: true
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: notifContent.leadIcon === ""
+                        radius: 10
+                        color: Theme.cardElevated
+                        Text {
+                            anchors.centerIn: parent
+                            text: notifContent.n && notifContent.n.appName ? notifContent.n.appName.charAt(0).toUpperCase() : "•"
+                            color: "#ffffff"
+                            font.pixelSize: 17
+                            font.weight: 700
+                        }
+                    }
                 }
 
-                Text {
-                    text: island.currentNotification ? island.currentNotification.summary : ""
-                    color: "#ffffff"
-                    font.pixelSize: 13
-                    font.weight: 600
-                    font.family: "SF Pro Display"
+                ColumnLayout {
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Text {
+                            text: notifContent.n ? (notifContent.n.summary || notifContent.n.appName) : ""
+                            color: "#ffffff"
+                            font.pixelSize: 14
+                            font.weight: 600
+                            font.family: "SF Pro Display"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Text {
+                            text: "now"
+                            color: "#ffffff"
+                            opacity: 0.4
+                            font.pixelSize: 11
+                            font.family: "SF Pro Text"
+                        }
+                    }
+                    Text {
+                        visible: text !== ""
+                        text: notifContent.n ? String(notifContent.n.body || "").replace(/<[^>]*>/g, "") : ""
+                        color: "#ffffff"
+                        opacity: 0.75
+                        font.pixelSize: 12
+                        font.family: "SF Pro Text"
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
-            }
 
-            Text {
-                text: island.currentNotification ? island.currentNotification.body : ""
-                color: "#ffffff"
-                font.pixelSize: 12
-                font.family: "SF Pro Display"
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                maximumLineCount: 2
-                elide: Text.ElideRight
+                ClippingRectangle {
+                    visible: notifContent.picture !== ""
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: 44
+                    implicitHeight: 44
+                    radius: 9
+                    color: Theme.cardElevated
+                    Image {
+                        anchors.fill: parent
+                        source: notifContent.picture
+                        sourceSize.width: 88
+                        sourceSize.height: 88
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                    }
+                }
             }
         }
 

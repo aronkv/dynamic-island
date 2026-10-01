@@ -42,12 +42,38 @@ Item {
         adapter.unread = store.unread
     }
 
+    // Content picture/icon of a notification. Real pictures (image hint,
+    // file path) come back as a loadable URL; theme icon names only when the
+    // theme actually has them (e.g. CachyOS's "system-reboot" doesn't exist
+    // and would render as the magenta "missing icon" checkerboard).
+    // Quickshell hands both over as "image://icon/<name or /abs/path>".
+    function _resolve(src) {
+        src = String(src || "")
+        if (src.startsWith("image://icon/")) src = src.slice("image://icon/".length)
+        if (src === "") return ""
+        if (src.startsWith("/")) return "file://" + src
+        if (src.indexOf("://") !== -1) return src          // file://, image://qsimage/…
+        return Quickshell.iconPath(src, true)              // theme name → "" if missing
+    }
     function _iconFor(n) {
-        const img = n.image || ""
-        if (img.startsWith("file://") || img.startsWith("/")) return img.startsWith("/") ? "file://" + img : img
-        const icon = n.appIcon || ""
-        if (icon.startsWith("file://") || icon.startsWith("/")) return icon.startsWith("/") ? "file://" + icon : icon
-        return icon ? "image://icon/" + icon : ""
+        return _resolve(n.image) || _resolve(n.appIcon)
+    }
+
+    // The sending app's own icon (shown top-left of the banner and next to
+    // each group in the history), separate from the notification's content
+    // icon/image. CachyOS's updater sends a generic "system-reboot" icon,
+    // so it gets the CachyOS logo; everything else resolves through its
+    // desktop entry (by id, then a heuristic name match). "" = no icon.
+    function appIconFor(app, desktopEntryId) {
+        const a = String(app || "").toLowerCase()
+        if (a.indexOf("cachyos") !== -1) return "file:///usr/share/icons/cachyos.svg"
+        let e = desktopEntryId ? DesktopEntries.byId(desktopEntryId) : null
+        if (!e && app) e = DesktopEntries.heuristicLookup(app)
+        if (e && e.icon) {
+            if (e.icon.startsWith("/")) return "file://" + e.icon
+            return Quickshell.iconPath(e.icon, true)
+        }
+        return ""
     }
 
     function add(n) {
@@ -58,6 +84,7 @@ Item {
             summary: n.summary || "",
             body: (n.body || "").replace(/<[^>]*>/g, ""),
             icon: _iconFor(n),
+            appIcon: appIconFor(n.appName, n.desktopEntry),
             time: Date.now()
         }
         const list = [entry].concat(items)
