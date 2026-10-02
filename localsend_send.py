@@ -9,6 +9,12 @@ unverified self-signed cert, matching real LocalSend clients' own trust
 model per the protocol spec's "fingerprint is only used to avoid
 self-discovery" — there is no CA-based verification in this protocol).
 
+Text mode: a first argument of the form "text:<payload>" (real paths are
+absolute, so they never start with "text:") sends the payload as a LocalSend
+text message — a text/plain file whose `preview` carries the text. Receivers
+show it as a message and usually answer 204 (nothing to upload); if one asks
+for the file anyway, the text is uploaded as a .txt.
+
 Prints exactly one JSON line to stdout when done: either
 {"status": "success"} or {"status": "error", "message": "..."}.
 """
@@ -54,7 +60,13 @@ def main():
 
     file_path, ip, port_str, protocol, alias, device_model, fingerprint = sys.argv[1:8]
 
-    if not os.path.isfile(file_path):
+    text = None
+    if file_path.startswith("text:"):
+        text = file_path[len("text:"):]
+        if not text:
+            print(json.dumps({"status": "error", "message": "empty text"}))
+            return
+    elif not os.path.isfile(file_path):
         print(json.dumps({"status": "error", "message": "file not found"}))
         return
 
@@ -64,16 +76,32 @@ def main():
         print(json.dumps({"status": "error", "message": "invalid port"}))
         return
 
-    size = os.path.getsize(file_path)
-    file_name = os.path.basename(file_path)
-    mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
-
-    sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            sha256.update(chunk)
-
     file_id = str(uuid.uuid4())
+    if text is not None:
+        payload = text.encode("utf-8")
+        size = len(payload)
+        file_name = file_id + ".txt"
+        mime_type = "text/plain"
+        sha256 = hashlib.sha256(payload)
+    else:
+        payload = None
+        size = os.path.getsize(file_path)
+        file_name = os.path.basename(file_path)
+        mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        sha256 = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                sha256.update(chunk)
+
+    file_meta = {
+        "id": file_id,
+        "fileName": file_name,
+        "size": size,
+        "fileType": mime_type,
+        "sha256": sha256.hexdigest(),
+    }
+    if text is not None:
+        file_meta["preview"] = text
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -102,13 +130,7 @@ def main():
             "download": False,
         },
         "files": {
-            file_id: {
-                "id": file_id,
-                "fileName": file_name,
-                "size": size,
-                "fileType": mime_type,
-                "sha256": sha256.hexdigest(),
-            }
+            file_id: file_meta
         },
     }).encode("utf-8")
 
@@ -121,7 +143,11 @@ def main():
 
     try:
         with urllib.request.urlopen(prep_req, context=ctx, timeout=15) as resp:
-            prep_resp = json.loads(resp.read().decode("utf-8"))
+            if resp.status == 204:
+                # Text message shown by the receiver; nothing to upload.
+                print(json.dumps({"status": "success"}))
+                return
+            prep_resp = json.loads(resp.read().decode("utf-8") or "{}")
     except urllib.error.HTTPError as e:
         if e.code == 204:
             print(json.dumps({"status": "success", "message": "receiver needs no file transfer"}))
@@ -148,8 +174,11 @@ def main():
 
     upload_url = "%s/upload?sessionId=%s&fileId=%s&token=%s" % (base, session_id, file_id, token)
 
-    with open(file_path, "rb") as f:
-        file_bytes = f.read()
+    if payload is not None:
+        file_bytes = payload
+    else:
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
 
     upload_req = urllib.request.Request(upload_url, data=file_bytes, method="POST")
     try:

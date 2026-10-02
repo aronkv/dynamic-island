@@ -348,6 +348,9 @@ PanelWindow {
     property bool localSendActive: false
     property string localSendFilePath: ""
     property string localSendFileName: ""
+    // A dropped web link / plain text is sent as a LocalSend text message
+    // (localSendFilePath = "text:<payload>", see localsend_send.py).
+    property bool localSendIsText: false
     // Pill/strip: settingsStore.pillMode is the user's manual pick, but a
     // fullscreen focused window always forces "strip" regardless (so the
     // clock doesn't sit on top of fullscreen content), reverting to the
@@ -1350,13 +1353,24 @@ PanelWindow {
         DropArea {
             id: fileDropArea
             anchors.fill: parent
-            onEntered: (drag) => { if (!drag.hasUrls) drag.accepted = false }
+            onEntered: (drag) => { if (!drag.hasUrls && !drag.hasText) drag.accepted = false }
             onDropped: (drop) => {
-                if (drop.urls.length === 0) return
-                let path = drop.urls[0].toString()
-                if (path.startsWith("file://")) path = decodeURIComponent(path.substring(7))
-                island.localSendFilePath = path
-                island.localSendFileName = path.substring(path.lastIndexOf("/") + 1)
+                const first = drop.urls.length > 0 ? drop.urls[0].toString() : ""
+                if (first.startsWith("file://")) {
+                    const path = decodeURIComponent(first.substring(7))
+                    island.localSendIsText = false
+                    island.localSendFilePath = path
+                    island.localSendFileName = path.substring(path.lastIndexOf("/") + 1)
+                } else {
+                    // A link dragged from the browser (or any plain text):
+                    // send it as a message, not as a "file" named after the
+                    // URL's last segment (e.g. "watch?v=…"), which failed.
+                    const text = (first !== "" ? first : (drop.text || "")).trim()
+                    if (text === "") return
+                    island.localSendIsText = true
+                    island.localSendFilePath = "text:" + text
+                    island.localSendFileName = text
+                }
                 localSendMonitor.sendStatus = ""
                 localSendMonitor.sendErrorMessage = ""
                 island.localSendActive = true
@@ -1791,12 +1805,26 @@ PanelWindow {
                 visible: localSendMonitor.pendingIncoming === null
 
                 Text {
+                    visible: island.localSendIsText
+                    text: /^https?:\/\//i.test(island.localSendFileName)
+                        ? "Link · " + island.localSendFileName.replace(/^https?:\/\/(www\.)?/i, "").split("/")[0]
+                        : "Text"
+                    color: "#ffffff"
+                    opacity: 0.5
+                    font.pixelSize: 10
+                    font.weight: 600
+                    font.family: "SF Pro Display"
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+
+                Text {
                     text: island.localSendFileName
                     color: "#ffffff"
                     font.pixelSize: 12
                     font.weight: 600
                     font.family: "SF Pro Display"
-                    elide: Text.ElideRight
+                    elide: island.localSendIsText ? Text.ElideMiddle : Text.ElideRight
                     Layout.fillWidth: true
                 }
 
