@@ -229,8 +229,13 @@ FocusScope {
                     width: chipRow.implicitWidth + 22
                     height: 28
                     radius: 14
-                    color: selected ? "#ffffff" : (chipMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : Theme.card)
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    // Opaque colors only: fading between the opaque card grey
+                    // and a translucent white flashed darker mid-animation.
+                    color: selected ? (chipMouse.containsMouse ? "#e6e6e6" : "#ffffff")
+                        : (chipMouse.containsMouse ? Theme.cardElevated : Theme.card)
+                    scale: chipMouse.pressed ? 0.95 : 1
+                    Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
                     Row {
                         id: chipRow
                         anchors.centerIn: parent

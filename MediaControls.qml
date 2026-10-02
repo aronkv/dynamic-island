@@ -100,12 +100,23 @@ ColumnLayout {
         property real basePos: 0
         property real baseTime: 0
         property real livePos: 0
+        // Re-entrancy guard: forcing positionChanged() can make the player
+        // re-emit isPlaying/length/track changes, whose handlers call sync()
+        // again — that loop ended in "RangeError: Maximum call stack size
+        // exceeded" in the live log.
+        property bool _syncing: false
         function sync() {
-            if (!controls.player) { basePos = 0; livePos = 0; return }
-            controls.player.positionChanged()
-            basePos = controls.player.position
-            baseTime = Date.now()
-            livePos = basePos
+            if (_syncing) return
+            _syncing = true
+            try {
+                if (!controls.player) { basePos = 0; livePos = 0; return }
+                controls.player.positionChanged()
+                basePos = controls.player.position
+                baseTime = Date.now()
+                livePos = basePos
+            } finally {
+                _syncing = false
+            }
         }
         Connections {
             target: controls

@@ -1676,10 +1676,25 @@ PanelWindow {
                 color: "#1a1a1a"
                 clip: true
 
+                // The new file is often picked up while the screenshot tool is
+                // still writing it ("Unable to read image data") → retry a
+                // few times instead of showing an empty preview.
                 Image {
+                    id: shotPreview
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectFit
-                    source: screenshotMonitor.latestPath.length > 0 ? "file://" + screenshotMonitor.latestPath : ""
+                    cache: false
+                    asynchronous: true
+                    readonly property string path: screenshotMonitor.latestPath.length > 0 ? "file://" + screenshotMonitor.latestPath : ""
+                    property int tries: 0
+                    source: path
+                    onPathChanged: tries = 0
+                    onStatusChanged: if (status === Image.Error && tries < 6) shotRetry.restart()
+                    Timer {
+                        id: shotRetry
+                        interval: 250
+                        onTriggered: { shotPreview.tries++; shotPreview.source = ""; shotPreview.source = shotPreview.path }
+                    }
                 }
 
                 Rectangle {
