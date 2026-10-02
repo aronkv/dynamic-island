@@ -33,6 +33,7 @@ Item {
     readonly property bool calcGraphVisible: calculatorPanel.graphVisible
     readonly property bool calcSubVisible: calculatorPanel.subVisible
     readonly property real calcNaturalHeight: calculatorPanel.naturalHeight
+    readonly property real trayNaturalHeight: trayPanel.naturalHeight
     function wifiShare() { wifiPanel.toggleShare() }
     function calcSetExpression(t) { calculatorPanel.setExpression(t) }
     function calcShowHelp() { calculatorPanel.helpOpen = true }
@@ -669,5 +670,31 @@ Item {
         }
 
         onVisibleChanged: if (visible) shortcutsPanel.refresh()
+    }
+
+    ColumnLayout {
+        id: trayContent
+        anchors.fill: parent
+        anchors.margins: 14
+        spacing: 10
+        opacity: panel.activeView === "tray" ? 1 : 0
+        scale: panel.activeView === "tray" ? 1 : 0.97
+        transform: Translate {
+            x: panel.activeView === "tray" ? 0 : Theme.panelSlide
+            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
+        }
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+        TrayPanel {
+            id: trayPanel
+            Layout.fillWidth: true
+            active: panel.panelOpen && panel.activeView === "tray"
+            onCloseRequested: panel.closeRequested()
+        }
+
+        Item { Layout.fillHeight: true }
     }
 }

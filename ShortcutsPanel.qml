@@ -27,7 +27,7 @@ ColumnLayout {
     readonly property var ipcLabels: ({
         calculator: "Calculator", weather: "Weather", theme: "Themes", wallpaper: "Wallpapers",
         settings: "Settings", shortcuts: "Keyboard shortcuts", power: "Power menu", battery: "Battery",
-        clipboard: "Clipboard history", calendar: "Calendar", launcher: "App launcher",
+        clipboard: "Clipboard history", calendar: "Calendar", tray: "Tray apps", launcher: "App launcher",
         overview: "Island · now playing (tap)"
     })
     readonly property var groupOrder: ["Island", "Apps", "Windows", "Workspaces", "Media & Hardware", "System"]

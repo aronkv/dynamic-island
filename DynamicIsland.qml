@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 import Quickshell.Services.UPower
+import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
@@ -982,6 +983,18 @@ PanelWindow {
     }
 
     IpcHandler {
+        target: "tray"
+        function toggle() {
+            const open = !(island.overviewPanelOpen && quickOverviewPanel.activeView === "tray")
+            island.closeAllPanels()
+            if (open) {
+                island.overviewPanelOpen = true
+                quickOverviewPanel.activeView = "tray"
+            }
+        }
+    }
+
+    IpcHandler {
         target: "weather"
         function toggle() {
             island.overviewPanelOpen = !island.overviewPanelOpen
@@ -1174,6 +1187,7 @@ PanelWindow {
                     if (quickOverviewPanel.activeView === "calculator") return 560
                     if (quickOverviewPanel.activeView === "calendar") return 580
                     if (quickOverviewPanel.activeView === "settings") return 400
+                    if (quickOverviewPanel.activeView === "tray") return 400
                     return 340
                 case "volume": return 300
                 case "brightness": return 300
@@ -1242,6 +1256,7 @@ PanelWindow {
                     if (quickOverviewPanel.activeView === "theme") return 372
                     if (quickOverviewPanel.activeView === "wallpaper") return 262
                     if (quickOverviewPanel.activeView === "shortcuts") return 470
+                    if (quickOverviewPanel.activeView === "tray") return Math.ceil(quickOverviewPanel.trayNaturalHeight) + 28
                     // Plain root: header row (~18) + spacing (8) + clock/
                     // date + wifi/bluetooth summary row (~43) + panel
                     // margins (36, widened for a more modern, less cramped
@@ -3025,6 +3040,53 @@ PanelWindow {
         // Cava bars moved into the idle pill itself (clockRow's right-side
         // mirror slot) — see that block for the real bar-drawing content.
         // Only mic/camera badges remain in this separate floating cluster.
+
+        // System tray: shown while any StatusNotifierItem is registered;
+        // click opens the overview's tray sub-view.
+        IndicatorBadge {
+            id: trayBadge
+            size: 44
+            // Liquid Glass: same frosted rim fading into a black core as
+            // the notch (translucent fill + stacked 0.3-alpha rings).
+            bgColor: island.surfaceColor
+            active: SystemTray.items.values.length > 0
+            Behavior on color { ColorAnimation { duration: 300 } }
+            Repeater {
+                model: 4
+                Rectangle {
+                    required property int index
+                    readonly property real inset: island.glassRim * 0.6 * index / 4
+                    anchors.fill: parent
+                    anchors.margins: inset
+                    radius: width / 2
+                    color: Qt.rgba(0, 0, 0, island.glassRim > 0 ? 0.3 : 1)
+                    visible: island.glassRim > 0 || index === 0
+                }
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: island.glassRim * 0.6
+                radius: width / 2
+                color: "#000000"
+            }
+            Grid {
+                anchors.centerIn: parent
+                columns: 2
+                spacing: 3
+                Repeater {
+                    model: 4
+                    Rectangle { width: 6; height: 6; radius: 2; color: "#ffffff" }
+                }
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    island.overviewPanelOpen = true
+                    quickOverviewPanel.activeView = "tray"
+                }
+            }
+        }
         IndicatorBadge {
             size: 44
             bgColor: "#000000"
