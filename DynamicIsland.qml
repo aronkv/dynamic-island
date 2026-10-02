@@ -1124,8 +1124,23 @@ PanelWindow {
             bottomRightRadius: Math.max(0, notch.bottomRightRadius - island.glassRim)
         }
 
-        width: targetWidth
-        height: targetHeight
+        // Spring-animated size (animW/animH carry the Behaviors below). When
+        // collapsing into an OSD the size never goes under the OSD's own
+        // size: the spring's undershoot made the notch's bottom edge slide
+        // over the slider for a few frames.
+        property real animW: targetWidth
+        property real animH: targetHeight
+        property real _floorW: 0
+        property real _floorH: 0
+        width: Math.max(animW, _floorW)
+        height: Math.max(animH, _floorH)
+        Connections {
+            target: island
+            function onDisplayStateChanged() {
+                notch._floorW = notch.osdMorph && notch.width > notch.targetWidth ? notch.targetWidth : 0
+                notch._floorH = notch.osdMorph && notch.height > notch.targetHeight ? notch.targetHeight : 0
+            }
+        }
         // True once the spring morph has (nearly) arrived — idle content
         // waits for this so it never appears inside a still-shrinking card.
         readonly property bool settled: Math.abs(width - targetWidth) < 90 && Math.abs(height - targetHeight) < 30
@@ -1255,8 +1270,19 @@ PanelWindow {
         // Spring, not a fixed-duration ease: the iPhone island's signature
         // slightly-elastic morph between states.
         // Reduce motion: a stiff, critically damped spring = quick, no overshoot.
-        Behavior on width { SpringAnimation { spring: Theme.reduceMotion ? 12 : Theme.springStiffness; damping: Theme.reduceMotion ? 1 : Theme.springDamping; epsilon: 0.3 } }
-        Behavior on height { SpringAnimation { spring: Theme.reduceMotion ? 12 : Theme.springStiffness; damping: Theme.reduceMotion ? 1 : Theme.springDamping; epsilon: 0.3 } }
+        // OSDs (volume, brightness, Caps Lock, mic) morph in with a stiffer,
+        // better-damped spring: collapsing e.g. the media card into the
+        // volume pill with the regular spring left a big empty black box
+        // shrinking for ~130 ms.
+        readonly property bool osdMorph: island.displayState === "volume" || island.displayState === "brightness"
+            || island.displayState === "capslock" || island.displayState === "micmute"
+        // Critically damped for OSDs: with any undershoot the notch dipped
+        // below the OSD's size and the slider (whose scale follows the
+        // notch) visibly shrank and popped back — the "jump".
+        readonly property real morphSpring: Theme.reduceMotion ? 12 : osdMorph ? 9 : Theme.springStiffness
+        readonly property real morphDamping: Theme.reduceMotion ? 1 : osdMorph ? 1 : Theme.springDamping
+        Behavior on animW { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }
+        Behavior on animH { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }
 
         // Purely hover-tracking, not a click-consuming MouseArea — a
         // HoverHandler never intercepts press/click events, so it can sit
@@ -2025,13 +2051,42 @@ PanelWindow {
 
         // Volume / brightness / Caps Lock / mic mute — one shared OSD, same
         // size for all four (see OsdPill.qml).
+        // Laid out at its final size (the notch's target size while shown,
+        // frozen afterwards) and pinned to the top center: with
+        // anchors.fill it stretched to e.g. the media card's size and
+        // shrank along with the morph — a giant slider for the first frames.
+        // The morphing notch just clips it.
         component IslandOsd: OsdPill {
-            anchors.fill: parent
+            id: islandOsd
+            anchors.horizontalCenter: parent.horizontalCenter
+            // Centered while the notch is taller than the OSD (collapsing
+            // from the media card), settling onto the top edge as it shrinks.
+            y: Math.max(0, (notch.height - height) / 2)
+            property real fixedW: 300
+            property real fixedH: 64
+            // Captured once per appearance (after the state change settles),
+            // never while hiding: a live `Binding … when: shown` picked up the
+            // *next* state's size for one frame on the way out (the slider
+            // visibly jumped smaller before fading).
+            // growIn: appearing from something smaller than the OSD (the idle
+            // pill) → scale with the notch. From something bigger (the media
+            // card) it stays at full size — scaling with the notch there made
+            // the slider shrink and pop back on the spring's undershoot.
+            property bool growIn: true
+            onShownChanged: if (shown) {
+                growIn = notch.height < 64
+                Qt.callLater(() => { islandOsd.fixedW = notch.targetWidth; islandOsd.fixedH = notch.targetHeight })
+            }
+            width: fixedW
+            height: fixedH
             opacity: shown ? 1 : 0
-            scale: shown ? 1 : 0.8
+            // Grows/shrinks with the morphing notch instead of its own scale
+            // animation, so it always fits inside it: no half-clipped slider
+            // while the notch is still narrower than the OSD.
+            scale: growIn ? Math.max(0.5, Math.min(1, notch.width / Math.max(1, fixedW), notch.height / Math.max(1, fixedH))) : 1
+            transformOrigin: Item.Top          // the notch grows down from the top edge
             visible: opacity > 0
             FadeBehavior on opacity {}
-            ScaleBehavior on scale {}
         }
 
         IslandOsd {
