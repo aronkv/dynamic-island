@@ -3,8 +3,8 @@ import QtQuick.Shapes
 
 // Idle "plugged in" badge left of the island: just the green bolt shape —
 // no disc — with a soft dark halo in the bolt's own shape so it reads on
-// any wallpaper. While charging, the bolt briefly brightens every few
-// seconds. Fully charged (plugged in,
+// any wallpaper. While charging, a soft band of light sweeps up through
+// the bolt every few seconds. Fully charged (plugged in,
 // not charging) shows a charger-plug glyph instead of the bolt. The glyph
 // sits a few px right of the badge's center (closer to the island).
 Item {
@@ -66,22 +66,30 @@ Item {
     }
 
     // Soft dark halo in the glyph's own shape, so it reads on any
-    // wallpaper: a few larger, faint dark copies stacked under it. Used to
-    // be a blurred offscreen layer (MultiEffect); after a fullscreen game
-    // was closed that layer came back as a grey box behind the bolt.
+    // wallpaper. Used to be a blurred offscreen layer (MultiEffect); after a
+    // fullscreen game was closed that layer came back as a grey box behind
+    // the bolt. Now: the bolt's outline stroked several times, wide and
+    // faint to narrow and darker (round joins), which fades out evenly from
+    // the edge — scaled-up copies made a stepped, uneven rim.
+    Repeater {
+        model: [{ w: 12, a: 0.03 }, { w: 9, a: 0.04 }, { w: 6.5, a: 0.06 }, { w: 4, a: 0.08 }, { w: 2, a: 0.12 }]
+        BoltShape {
+            required property var modelData
+            anchors.centerIn: parent
+            anchors.horizontalCenterOffset: badge.shift
+            width: 28
+            height: 28
+            visible: badge.charging
+            color: "transparent"
+            outline: Qt.rgba(0, 0, 0, modelData.a)
+            outlineWidth: modelData.w * 24 / 28   // path is scaled to 28 px
+        }
+    }
     Repeater {
         model: [{ k: 1.35, a: 0.18 }, { k: 1.22, a: 0.25 }, { k: 1.1, a: 0.35 }]
         Item {
             required property var modelData
             anchors.fill: parent
-            BoltShape {
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: badge.shift
-                width: 28 * modelData.k
-                height: 28 * modelData.k
-                visible: badge.charging
-                color: Qt.rgba(0, 0, 0, modelData.a)
-            }
             PlugShape {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: badge.shift
@@ -110,14 +118,46 @@ Item {
         width: 28
         height: 28
         color: badge.green
-        // While charging, a brief brighten every few seconds (was a light
-        // streak masked to the bolt — same layer problem as the halo).
-        SequentialAnimation on color {
-            running: badge.charging && badge.shown && !Theme.reduceMotion
-            loops: Animation.Infinite
-            ColorAnimation { to: "#b4f5bf"; duration: 550; easing.type: Easing.InOutSine }
-            ColorAnimation { to: "#32d74b"; duration: 550; easing.type: Easing.InOutSine }
-            PauseAnimation { duration: 4500 }
+    }
+
+    // While charging, every few seconds a band of light sweeps up through
+    // the bolt (charge flowing in). The band
+    // is the bolt drawn again in a light green inside plain rectangular
+    // clips that move up — no offscreen layer or mask (those came back as
+    // a grey box after a fullscreen game). Five nested clips, wide/faint
+    // to narrow/bright, give the band soft edges.
+    Item {
+        id: sweep
+        anchors.fill: bolt
+        visible: badge.charging && pos > -0.5
+        property real pos: -1          // band centre, 0 = bottom … 1 = top
+        readonly property real centreY: height * (1 - pos)
+        Repeater {
+            model: [{ h: 16, a: 0.14 }, { h: 12.5, a: 0.18 }, { h: 9, a: 0.22 }, { h: 6, a: 0.28 }, { h: 3, a: 0.35 }]
+            Item {
+                required property var modelData
+                x: 0
+                width: sweep.width
+                y: sweep.centreY - modelData.h / 2
+                height: modelData.h
+                clip: true
+                BoltShape {
+                    x: 0
+                    y: -parent.y
+                    width: sweep.width
+                    height: sweep.height
+                    color: Qt.rgba(0.85, 1, 0.88, modelData.a)
+                }
+            }
         }
+    }
+
+    SequentialAnimation {
+        running: badge.charging && badge.shown && !Theme.reduceMotion
+        loops: Animation.Infinite
+        PauseAnimation { duration: 600 }
+        NumberAnimation { target: sweep; property: "pos"; from: -0.3; to: 1.3; duration: 900; easing.type: Easing.InOutSine }
+        PropertyAction { target: sweep; property: "pos"; value: -1 }
+        PauseAnimation { duration: 3500 }
     }
 }
