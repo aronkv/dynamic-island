@@ -2,9 +2,10 @@ import QtQuick
 import QtQuick.Shapes
 
 // Compact live-activity indicator at the left of the idle pill. Shows the
-// most important one: recording (pulsing red dot + elapsed) > timer /
-// pomodoro / stopwatch (progress ring + time) > low battery (≤ 10 %, red
-// battery + percentage; tap re-shows the alert) > rain soon.
+// most important one: timer / pomodoro / stopwatch (progress ring + time)
+// > low battery (≤ 10 %, red battery + percentage; tap re-shows the alert)
+// > rain soon. Screen recording has its own badge outside the pill
+// (RecordingBadge.qml).
 // Click → the expanded activity view (signal `openRequested`).
 Item {
     id: chip
@@ -17,7 +18,6 @@ Item {
     signal batteryRequested()
 
     readonly property string kind: !store ? ""
-        : store.recording ? "record"
         : store.timerActive ? "timer"
         : (battery && battery.onBattery && battery.percentage <= 10) ? "battery"
         : (rainEnabled && weather && weather.rainSoon) ? "rain" : ""
@@ -31,22 +31,6 @@ Item {
         id: row
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
-
-        // Recording: pulsing red dot.
-        Rectangle {
-            visible: chip.kind === "record"
-            anchors.verticalCenter: parent.verticalCenter
-            width: 9
-            height: 9
-            radius: 4.5
-            color: "#ff453a"
-            SequentialAnimation on opacity {
-                running: chip.kind === "record"
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
-            }
-        }
 
         // Timer: progress ring (stopwatch: a full ring that spins slowly).
         Item {
@@ -118,12 +102,11 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: !chip.store ? ""
-                : chip.kind === "record" ? chip.store.format(chip.store.recordElapsed)
                 : chip.kind === "timer" ? chip.store.format(chip.store.mode === "stopwatch" ? chip.store.elapsed : chip.store.remaining)
                 : chip.kind === "battery" && chip.battery ? Math.round(chip.battery.percentage) + "%"
                 : chip.kind === "rain" && chip.weather ? (chip.weather.rainInMinutes <= 1 ? "Rain now" : "Rain " + chip.weather.rainInMinutes + "m")
                 : ""
-            color: chip.kind === "record" || chip.kind === "battery" ? "#ff453a" : "#ffffff"
+            color: chip.kind === "battery" ? "#ff453a" : "#ffffff"
             opacity: chip.store && chip.store.paused && chip.kind === "timer" ? 0.5 : 1
             font.pixelSize: 13
             font.weight: 600

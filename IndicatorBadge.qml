@@ -17,6 +17,9 @@ Rectangle {
     // "mic" | "video": draw the filled SF-style vector glyph (MicShape /
     // VideoShape) instead of the icon-theme icon.
     property string shape: ""
+    // > 0: Liquid Glass rim like the notch / RecordingBadge (pass
+    // island.glassRim and bgColor: island.surfaceColor); 0 = flat bgColor.
+    property real glassRim: 0
 
     width: size
     height: size
@@ -29,6 +32,24 @@ Rectangle {
 
     Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+    Repeater {
+        model: badge.glassRim > 0 ? 4 : 0
+        Rectangle {
+            required property int index
+            anchors.fill: parent
+            anchors.margins: badge.glassRim * 0.6 * index / 4
+            radius: width / 2
+            color: Qt.rgba(0, 0, 0, 0.3)
+        }
+    }
+    Rectangle {
+        visible: badge.glassRim > 0
+        anchors.fill: parent
+        anchors.margins: badge.glassRim * 0.6
+        radius: width / 2
+        color: "#000000"
+    }
 
     MicShape {
         anchors.centerIn: parent

@@ -307,6 +307,10 @@ PanelWindow {
 
     IconCacheMonitor {}
 
+    ScreenShareMonitor {
+        id: screenShareMonitor
+    }
+
     property var currentNotification: null
     property bool notificationActive: false
     property bool mediaExpandedRequested: false
@@ -343,6 +347,13 @@ PanelWindow {
     // Width of that translucent frosted rim; the island's body inside it
     // stays solid black (see notchCore).
     readonly property real glassRim: settingsStore.blurEnabled ? 7 : 0
+    // Floating badges beside the pill (charging / recording / tray / mic /
+    // camera) sit idleBadgeGap below the screen's top edge so they never
+    // touch it (user request), and end exactly on the pill's bottom edge
+    // (pill height - gap): centering them with a gap on both sides (32 px)
+    // read as too small, and hanging past the pill's bottom looked off.
+    readonly property int idleBadgeGap: 3
+    readonly property int idleBadgeSize: (settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40) - idleBadgeGap
     // Set by dropping a file onto the pill (see the DropArea inside notch
     // below) — stays open (no auto-collapse timer) while the user picks a
     // device, since forcing it away before they've acted would defeat the
@@ -1462,7 +1473,8 @@ PanelWindow {
                 id: clockRow
                 spacing: 12
 
-                // Live activity (recording / timer / rain) — click expands.
+                // Live activity (timer / low battery / rain) — click expands.
+                // Recording has its own badge outside the pill (RecordingBadge).
                 LiveActivityChip {
                     store: activityStore
                     battery: batteryMonitor
@@ -2972,9 +2984,9 @@ PanelWindow {
     // inside one continuous shape rather than a separate floating badge next
     // to the pill (the look the reference screenshot actually shows).
     // Positioned immediately left of notch with a visible gap, vertically
-    // matching idleRow's own fixed-point pinning (not anchored to notch's
-    // live, currently-animating height — same drift bug already documented
-    // for idleRow above). Active on Charging OR FullyCharged (not just
+    // pinned to a fixed inset (island.idleBadgeGap) inside the idle pill's
+    // height band (not anchored to notch's live, currently-animating height
+    // — same drift bug already documented for idleRow above). Active on Charging OR FullyCharged (not just
     // Charging alone) — a laptop plugged in and topped off at 100% reports
     // FullyCharged, not Charging, but should still show "plugged in", same
     // convention as macOS's own charging-bolt overlay.
@@ -2983,7 +2995,8 @@ PanelWindow {
         anchors.right: notch.left
         anchors.rightMargin: 8
         anchors.top: parent.top
-        anchors.topMargin: 18 - height / 2
+        anchors.topMargin: island.idleBadgeGap
+        spacing: 4
         opacity: (island.displayState === "idle" && !(island.pillModeEffective === "strip" && !island.stripHovered)) ? 1 : 0
         scale: island.displayState === "idle" ? 1 : 0.8
         visible: opacity > 0
@@ -3003,8 +3016,8 @@ PanelWindow {
         Item {
             id: chargingGlyph
             property bool active: batteryMonitor.state === UPowerDeviceState.Charging || batteryMonitor.state === UPowerDeviceState.FullyCharged
-            width: 44
-            height: 44
+            width: island.idleBadgeSize
+            height: island.idleBadgeSize
             opacity: active ? 1 : 0
             scale: active ? 1 : 0.7
             visible: opacity > 0
@@ -3014,11 +3027,33 @@ PanelWindow {
 
             // Level ring + breathing bolt — see ChargeBadge.qml.
             ChargeBadge {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 percent: batteryMonitor.percentage
                 charging: batteryMonitor.state === UPowerDeviceState.Charging
                 shown: chargingGlyph.active && idleBadgeLeft.visible
             }
+        }
+
+        // Screen recording lives out here rather than in the pill's
+        // LiveActivityChip (user request: outside the pill, on the left).
+        // Last in the row so it sits right next to the pill.
+        RecordingBadge {
+            store: activityStore
+            size: island.idleBadgeSize
+            surfaceColor: island.surfaceColor
+            glassRim: island.glassRim
+            onOpenRequested: { island.closeAllPanels(); island.activityOpen = true }
+        }
+
+        // Portal screen sharing (ScreenShareMonitor) — next to recording,
+        // the other "your screen is being captured" indicator.
+        IndicatorBadge {
+            size: island.idleBadgeSize
+            bgColor: island.surfaceColor
+            glassRim: island.glassRim
+            icon: "screen-shared-symbolic"
+            iconColor: "#0a84ff"
+            active: screenShareMonitor.active
         }
     }
 
@@ -3030,7 +3065,7 @@ PanelWindow {
         anchors.left: notch.right
         anchors.leftMargin: 8
         anchors.top: parent.top
-        anchors.topMargin: 18 - height / 2
+        anchors.topMargin: island.idleBadgeGap
         spacing: 4
         opacity: (island.displayState === "idle" && !(island.pillModeEffective === "strip" && !island.stripHovered)) ? 1 : 0
         scale: island.displayState === "idle" ? 1 : 0.8
@@ -3047,7 +3082,7 @@ PanelWindow {
         // click opens the overview's tray sub-view.
         IndicatorBadge {
             id: trayBadge
-            size: 44
+            size: island.idleBadgeSize
             // Liquid Glass: same frosted rim fading into a black core as
             // the notch (translucent fill + stacked 0.3-alpha rings).
             bgColor: island.surfaceColor
@@ -3090,7 +3125,7 @@ PanelWindow {
             }
         }
         IndicatorBadge {
-            size: 44
+            size: island.idleBadgeSize
             bgColor: "#000000"
             shape: "mic"
             iconColor: "#ff9f0a"
@@ -3098,7 +3133,7 @@ PanelWindow {
         }
 
         IndicatorBadge {
-            size: 44
+            size: island.idleBadgeSize
             bgColor: "#000000"
             shape: "video"
             iconColor: "#32d74b"
