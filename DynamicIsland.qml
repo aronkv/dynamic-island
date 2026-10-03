@@ -1488,7 +1488,7 @@ PanelWindow {
                 // Recording has its own badge outside the pill (RecordingBadge).
                 LiveActivityChip {
                     store: activityStore
-                    battery: batteryMonitor
+                    battery: settingsStore.batteryBadge ? null : batteryMonitor
                     weather: weatherMonitor
                     rainEnabled: settingsStore.rainAlert
                     accent: island.accentColor
@@ -3072,6 +3072,24 @@ PanelWindow {
             }
         }
 
+        // Battery level while on battery (Settings → Battery); ChargeBadge
+        // above covers the plugged-in case. Replaces the pill's own ≤ 10 %
+        // LiveActivityChip entry while enabled.
+        BatteryBadge {
+            size: island.idleBadgeSize
+            surfaceColor: island.surfaceColor
+            glassRim: island.glassRim
+            battery: batteryMonitor
+            enabledSetting: settingsStore.batteryBadge
+            showPercent: settingsStore.batteryBadgePercent
+            lowPower: PowerProfiles.profile === PowerProfile.PowerSaver
+            onClicked: {
+                island.closeAllPanels()
+                island.overviewPanelOpen = true
+                quickOverviewPanel.activeView = "battery"
+            }
+        }
+
         // Screen recording lives out here rather than in the pill's
         // LiveActivityChip (user request: outside the pill, on the left).
         // Last in the row so it sits right next to the pill.
@@ -3081,18 +3099,6 @@ PanelWindow {
             surfaceColor: island.surfaceColor
             glassRim: island.glassRim
             onOpenRequested: { island.closeAllPanels(); island.activityOpen = true }
-        }
-
-        // Portal screen sharing (ScreenShareMonitor) — next to recording,
-        // the other "your screen is being captured" indicator.
-        IndicatorBadge {
-            size: island.idleBadgeSize
-            bgColor: island.surfaceColor
-            glassRim: island.glassRim
-            icon: "screen-shared-symbolic"
-            iconRatio: 0.42
-            iconColor: "#0a84ff"
-            active: screenShareMonitor.active
         }
     }
 
@@ -3162,6 +3168,17 @@ PanelWindow {
                     quickOverviewPanel.activeView = "tray"
                 }
             }
+        }
+        // Portal screen sharing (ScreenShareMonitor), with the other
+        // privacy indicators (user moved it here from the left).
+        IndicatorBadge {
+            size: island.idleBadgeSize
+            bgColor: island.surfaceColor
+            glassRim: island.glassRim
+            icon: "screen-shared-symbolic"
+            iconRatio: 0.42
+            iconColor: "#0a84ff"
+            active: screenShareMonitor.active
         }
         IndicatorBadge {
             size: island.idleBadgeSize

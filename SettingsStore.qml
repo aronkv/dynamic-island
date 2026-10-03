@@ -24,6 +24,10 @@ Item {
     property alias idlePlayerMode: adapter.idlePlayerMode
     // Auto-switch to Power Saver on battery at <=20% (BatteryMonitor.qml).
     property alias autoLowPower: adapter.autoLowPower
+    // Battery badge left of the pill while on battery (BatteryBadge.qml),
+    // and whether it shows the percentage next to the glyph.
+    property alias batteryBadge: adapter.batteryBadge
+    property alias batteryBadgePercent: adapter.batteryBadgePercent
     // Calculator: show the history column permanently (else via its button).
     property alias calcHistoryAlways: adapter.calcHistoryAlways
     // "Rain in ~15 min" alert in the island (WeatherMonitor minutely data).
@@ -104,6 +108,8 @@ Item {
             property int idleHeight: 0
             property string idlePlayerMode: "art"
             property bool autoLowPower: true
+            property bool batteryBadge: true
+            property bool batteryBadgePercent: true
             property bool calcHistoryAlways: false
             property bool rainAlert: true
             property bool reduceMotion: false

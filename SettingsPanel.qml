@@ -501,6 +501,27 @@ ColumnLayout {
                 wrapMode: Text.WordWrap
             }
 
+            SectionTitle { text: "BATTERY" }
+            Group {
+                Row {
+                    icon: "battery-level-50-symbolic"
+                    tint: Theme.green
+                    label: "Battery outside the pill"
+                    subtitle: "Shown left of the island while on battery"
+                    checked: panel.store ? panel.store.batteryBadge : false
+                    onToggled: if (panel.store) panel.store.batteryBadge = !panel.store.batteryBadge
+                }
+                Separator {}
+                Row {
+                    icon: "format-text-plaintext-symbolic"
+                    tint: Theme.green
+                    label: "Show percentage"
+                    opacity: panel.store && panel.store.batteryBadge ? 1 : 0.4
+                    checked: panel.store ? panel.store.batteryBadgePercent : false
+                    onToggled: if (panel.store) panel.store.batteryBadgePercent = !panel.store.batteryBadgePercent
+                }
+            }
+
             SectionTitle { text: "NOTIFICATIONS & PRIVACY" }
             Group {
                 Row {
