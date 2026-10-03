@@ -2,9 +2,10 @@ import QtQuick
 
 // Battery level as a floating glass badge left of the pill (idleBadgeLeft),
 // shown while on battery when Settings → Battery → "Battery outside the
-// pill" is on; ChargeBadge takes over while plugged in. iOS colors: red at
+// pill" is on — and always at ≤ 10 %, then with the minutes left until
+// empty; ChargeBadge takes over while plugged in. iOS colors: red at
 // ≤ 10 %, yellow while Power Saver is on, white otherwise. With
-// showPercent off it shrinks to a circle around the glyph.
+// showPercent off (and not low) it shrinks to a circle around the glyph.
 // Click → `clicked` (the island opens the battery view).
 Rectangle {
     id: badge
@@ -17,8 +18,11 @@ Rectangle {
     property real glassRim: 0
     signal clicked()
 
-    readonly property bool active: enabledSetting && !!battery && battery.onBattery
     readonly property real pct: battery ? Math.max(0, Math.min(100, battery.percentage)) : 0
+    readonly property bool low: pct <= 10
+    readonly property bool active: !!battery && battery.onBattery && (enabledSetting || low)
+    // Smoothed estimate from BatteryMonitor (seconds); shown only when low.
+    readonly property int minutesLeft: low && battery && battery.timeRemaining > 0 ? Math.round(battery.timeRemaining / 60) : -1
     readonly property color tint: pct <= 10 ? "#ff453a" : lowPower ? "#ffd60a" : "#ffffff"
 
     width: Math.max(size, row.implicitWidth + 24)
@@ -59,9 +63,11 @@ Rectangle {
         spacing: 6
 
         Text {
-            visible: badge.showPercent
+            visible: badge.showPercent || badge.low
             anchors.verticalCenter: parent.verticalCenter
-            text: Math.round(badge.pct) + "%"
+            text: Math.round(badge.pct) + "%" + (badge.minutesLeft >= 0
+                ? " · " + (badge.minutesLeft >= 60 ? Math.floor(badge.minutesLeft / 60) + " h " + badge.minutesLeft % 60 : badge.minutesLeft) + " min"
+                : "")
             color: badge.tint
             font.pixelSize: 13
             font.weight: 600

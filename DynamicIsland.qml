@@ -1573,16 +1573,14 @@ PanelWindow {
                 id: clockRow
                 spacing: 12
 
-                // Live activity (timer / low battery / rain) — click expands.
-                // Recording has its own badge outside the pill (RecordingBadge).
+                // Live activity (timer / rain) — click expands. Recording and
+                // low battery have their own badges outside the pill.
                 LiveActivityChip {
                     store: activityStore
-                    battery: settingsStore.batteryBadge ? null : batteryMonitor
                     weather: weatherMonitor
                     rainEnabled: settingsStore.rainAlert
                     accent: island.accentColor
                     onOpenRequested: { island.closeAllPanels(); island.activityOpen = true }
-                    onBatteryRequested: island.showLowBattery(Math.max(1, island._lowBatteryBucket(batteryMonitor.percentage)), true)
                 }
 
                 Item {
@@ -3175,9 +3173,9 @@ PanelWindow {
             }
         }
 
-        // Battery level while on battery (Settings → Battery); ChargeBadge
-        // above covers the plugged-in case. Replaces the pill's own ≤ 10 %
-        // LiveActivityChip entry while enabled.
+        // Battery level while on battery (Settings → Battery), and always at
+        // ≤ 10 % with the minutes left; ChargeBadge above covers the
+        // plugged-in case. LiveActivityChip no longer shows low battery.
         BatteryBadge {
             size: island.idleBadgeSize
             surfaceColor: island.surfaceColor

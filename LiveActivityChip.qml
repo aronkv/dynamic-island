@@ -3,23 +3,19 @@ import QtQuick.Shapes
 
 // Compact live-activity indicator at the left of the idle pill. Shows the
 // most important one: timer / pomodoro / stopwatch (progress ring + time)
-// > low battery (≤ 10 %, red battery + percentage; tap re-shows the alert)
-// > rain soon. Screen recording has its own badge outside the pill
-// (RecordingBadge.qml).
+// > rain soon. Screen recording and low battery have their own badges
+// outside the pill (RecordingBadge.qml, BatteryBadge.qml).
 // Click → the expanded activity view (signal `openRequested`).
 Item {
     id: chip
     property var store: null
     property var weather: null
-    property var battery: null          // BatteryMonitor
     property bool rainEnabled: true
     property color accent: "#ffffff"
     signal openRequested()
-    signal batteryRequested()
 
     readonly property string kind: !store ? ""
         : store.timerActive ? "timer"
-        : (battery && battery.onBattery && battery.percentage <= 10) ? "battery"
         : (rainEnabled && weather && weather.rainSoon) ? "rain" : ""
     readonly property bool shown: kind !== ""
 
@@ -68,30 +64,6 @@ Item {
             }
         }
 
-        // Low battery (≤ 10 % on battery): a small red battery glyph.
-        Item {
-            visible: chip.kind === "battery"
-            anchors.verticalCenter: parent.verticalCenter
-            width: 22
-            height: 11
-            Rectangle {
-                width: 19
-                height: 11
-                radius: 3.5
-                color: "transparent"
-                border.width: 1.2
-                border.color: Qt.rgba(1, 0.27, 0.23, 0.8)
-                Rectangle {
-                    x: 2; y: 2
-                    height: parent.height - 4
-                    width: Math.max(2, (parent.width - 4) * (chip.battery ? chip.battery.percentage / 100 : 0))
-                    radius: 1.5
-                    color: "#ff453a"
-                }
-            }
-            Rectangle { x: 20; y: 3.5; width: 1.8; height: 4; radius: 1; color: Qt.rgba(1, 0.27, 0.23, 0.8) }
-        }
-
         Text {
             visible: chip.kind === "rain"
             anchors.verticalCenter: parent.verticalCenter
@@ -103,10 +75,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: !chip.store ? ""
                 : chip.kind === "timer" ? chip.store.format(chip.store.mode === "stopwatch" ? chip.store.elapsed : chip.store.remaining)
-                : chip.kind === "battery" && chip.battery ? Math.round(chip.battery.percentage) + "%"
                 : chip.kind === "rain" && chip.weather ? (chip.weather.rainInMinutes <= 1 ? "Rain now" : "Rain " + chip.weather.rainInMinutes + "m")
                 : ""
-            color: chip.kind === "battery" ? "#ff453a" : "#ffffff"
+            color: "#ffffff"
             opacity: chip.store && chip.store.paused && chip.kind === "timer" ? 0.5 : 1
             font.pixelSize: 13
             font.weight: 600
@@ -119,6 +90,6 @@ Item {
         anchors.fill: parent
         anchors.margins: -4
         cursorShape: Qt.PointingHandCursor
-        onClicked: chip.kind === "battery" ? chip.batteryRequested() : chip.openRequested()
+        onClicked: chip.openRequested()
     }
 }
