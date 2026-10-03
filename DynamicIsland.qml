@@ -167,6 +167,7 @@ PanelWindow {
     CavaMonitor {
         id: cavaMonitor
         enabled: mprisMonitor.anyPlayer !== null && mprisMonitor.anyPlayer.isPlaying
+        appKeys: mprisMonitor.appKeys(mprisMonitor.activePlayer)
     }
 
     ScreenshotMonitor {
@@ -1532,6 +1533,22 @@ PanelWindow {
                         maskThresholdMax: 1.0
                         maskSpreadAtMax: 0.0
                         visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
+                    }
+
+                    // No cover (e.g. a browser tab without the Plasma
+                    // integration extension's player): the app's own icon
+                    // instead of an empty grey square.
+                    IconImage {
+                        anchors.centerIn: parent
+                        implicitSize: 20
+                        visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
+                            && !mprisMonitor.anyPlayer.trackArtUrl
+                        source: {
+                            const p = mprisMonitor.anyPlayer
+                            if (!p) return ""
+                            const e = DesktopEntries.heuristicLookup(p.desktopEntry || p.identity)
+                            return Quickshell.iconPath(e ? e.icon : "", "audio-x-generic")
+                        }
                     }
                 }
 
