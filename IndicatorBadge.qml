@@ -20,6 +20,9 @@ Rectangle {
     // > 0: Liquid Glass rim like the notch / RecordingBadge (pass
     // island.glassRim and bgColor: island.surfaceColor); 0 = flat bgColor.
     property real glassRim: 0
+    // Icon-theme glyph size relative to the badge (the default 16/28 is the
+    // original look; a busier glyph can ask for less).
+    property real iconRatio: 16 / 28
 
     width: size
     height: size
@@ -77,7 +80,7 @@ Rectangle {
         // mismatched fractional box, which is what made mic/camera look
         // distorted once the badge grew from 28 to 44 (the smaller default
         // size never made this visible).
-        implicitSize: Math.round(size * 16 / 28)
+        implicitSize: Math.round(size * badge.iconRatio)
         smooth: true
         mipmap: true
         source: badge.icon !== "" ? "image://icon/" + badge.icon : ""

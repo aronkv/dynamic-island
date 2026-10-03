@@ -1601,7 +1601,12 @@ PanelWindow {
                                 // accent otherwise).
                                 color: island.artAccent
 
-                                Behavior on height { NumberAnimation { duration: 80 } }
+                                // No height Behavior: cava already smooths
+                                // (noise_reduction), and an 80 ms animation
+                                // per 30 Hz update kept the island
+                                // repainting at 60 fps for the whole song —
+                                // every frame recomposited by Hyprland,
+                                // which is what made opening it stutter.
                                 Behavior on color { ColorAnimation { duration: 220 } }
                             }
                         }
@@ -2319,7 +2324,7 @@ PanelWindow {
                         GradientStop { position: 0.0; color: Qt.rgba(island.artAccent.r, island.artAccent.g, island.artAccent.b, 0.55) }
                         GradientStop { position: 1.0; color: Qt.rgba(island.artAccent.r, island.artAccent.g, island.artAccent.b, 0.08) }
                     }
-                    Behavior on height { NumberAnimation { duration: 90 } }
+                    // No height Behavior — see the pill bars above.
                 }
             }
         }
@@ -3085,6 +3090,7 @@ PanelWindow {
             bgColor: island.surfaceColor
             glassRim: island.glassRim
             icon: "screen-shared-symbolic"
+            iconRatio: 0.42
             iconColor: "#0a84ff"
             active: screenShareMonitor.active
         }
