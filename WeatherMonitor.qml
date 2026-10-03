@@ -1,7 +1,11 @@
+import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// One-purpose monitor: IP-based geolocation feeding a keyless current-weather
+// One-purpose monitor: Wi-Fi positioning (wifi_locate.py — nearby access
+// points looked up via Apple's Wi-Fi location service, BeaconDB fallback;
+// ~20 m vs. the ISP-level tens of km of IP geolocation) with IP geolocation
+// as the fallback, feeding a keyless current-weather
 // API, with an optional manual-city override (settingsStore.weatherCity/
 // weatherManualLocation) for when IP geolocation is inaccurate. Both base
 // steps confirmed live against the real endpoints before wiring this up:
@@ -89,8 +93,35 @@ Item {
             geocodeProbe.running = true
         } else {
             weatherMonitor._locationError = false
-            geoProbe.running = true
+            wifiProbe.running = true
         }
+    }
+
+    // "wifi" when the last automatic fix came from wifi_locate.py, "ip"
+    // when it fell back to ip-api.com.
+    property string _autoSource: "ip"
+
+    // Prints one JSON line on success, nothing (exit 1) when no Wi-Fi fix is
+    // possible (Wi-Fi off, no access points known) — then fall back to IP.
+    Process {
+        id: wifiProbe
+        command: ["python3", Quickshell.env("HOME") + "/.config/quickshell/wifi_locate.py"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onTextChanged: {
+                try {
+                    const data = JSON.parse(text)
+                    weatherMonitor._lat = data.lat
+                    weatherMonitor._lon = data.lon
+                    weatherMonitor._city = data.city || ""
+                    weatherMonitor._autoSource = "wifi"
+                    weatherMonitor.fetchWeather()
+                } catch (e) {}
+            }
+        }
+        // Exit code, not the stdout handler, decides the fallback: the
+        // collector's text can land after `exited` fires.
+        onExited: (exitCode) => { if (exitCode !== 0) geoProbe.running = true }
     }
 
     Process {
@@ -105,6 +136,7 @@ Item {
                         weatherMonitor._lat = data.lat
                         weatherMonitor._lon = data.lon
                         weatherMonitor._city = data.city || ""
+                        weatherMonitor._autoSource = "ip"
                         weatherMonitor.fetchWeather()
                     }
                 } catch (e) {
@@ -152,11 +184,10 @@ Item {
         function onWeatherCityChanged() { weatherMonitor.refreshLocation() }
     }
 
-    // Re-resolve location only every 3 hours — IP geolocation for a laptop
-    // that isn't traveling essentially never changes, so polling this as
-    // often as the weather itself would just be wasted requests.
+    // Re-resolve location every 30 minutes — cheap (one Wi-Fi lookup +
+    // one reverse geocode) and follows a laptop that moved between cities.
     Timer {
-        interval: 3 * 60 * 60 * 1000
+        interval: 30 * 60 * 1000
         running: true
         repeat: true
         onTriggered: weatherMonitor.refreshLocation()
@@ -170,9 +201,10 @@ Item {
     readonly property var hourly: _hourly            // [{time, temp, code, isDay, precip}] × 24
     readonly property var daily: _daily              // [{date, code, max, min, sunrise, sunset, uvMax, precipMax}] × 7
     property var _current: null
-    // "manual" (city typed in Settings) or "ip" (approximate, from the
-    // public IP — can be off by tens of km), plus when data last arrived.
-    readonly property string locationSource: settingsStore && settingsStore.weatherManualLocation && settingsStore.weatherCity.trim() !== "" ? "manual" : "ip"
+    // "manual" (city typed in Settings), "wifi" (nearby access points) or
+    // "ip" (approximate, from the public IP — can be off by tens of km),
+    // plus when data last arrived.
+    readonly property string locationSource: settingsStore && settingsStore.weatherManualLocation && settingsStore.weatherCity.trim() !== "" ? "manual" : _autoSource
     property date lastUpdated: new Date(0)
     property var _hourly: []
 

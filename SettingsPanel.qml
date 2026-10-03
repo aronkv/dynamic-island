@@ -577,7 +577,7 @@ ColumnLayout {
                     icon: "find-location-symbolic"
                     tint: Theme.blue
                     label: "Manual location"
-                    subtitle: panel.store && panel.store.weatherManualLocation ? "" : "Detected automatically from your IP"
+                    subtitle: panel.store && panel.store.weatherManualLocation ? "" : "Detected automatically (Wi-Fi, else IP)"
                     checked: panel.store ? panel.store.weatherManualLocation : false
                     onToggled: if (panel.store) panel.store.weatherManualLocation = !panel.store.weatherManualLocation
                 }

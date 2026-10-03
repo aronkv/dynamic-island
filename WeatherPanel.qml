@@ -178,7 +178,8 @@ ColumnLayout {
                 }
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: (panel.monitor && panel.monitor.locationSource === "manual" ? "Set location" : "Approximate location (IP)")
+                    text: (panel.monitor && panel.monitor.locationSource === "manual" ? "Set location"
+                              : panel.monitor && panel.monitor.locationSource === "wifi" ? "Wi-Fi location" : "Approximate location (IP)")
                         + (panel.monitor && panel.monitor.lastUpdated.getTime() > 0
                            ? " · updated " + Qt.formatTime(panel.monitor.lastUpdated, "HH:mm") : "")
                     color: "#ffffff"
