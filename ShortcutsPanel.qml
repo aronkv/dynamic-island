@@ -50,7 +50,8 @@ ColumnLayout {
         let m = action.match(/qs ipc call (\w+) (\w+)/)
         if (m) {
             if (m[1] === "lock") return ["System", "Lock screen"]
-            if (m[1] === "brightness") return ["Media & Hardware", m[2] === "up" ? "Brightness up" : "Brightness down"]
+            // "brightness up" or "brightness press up"
+            if (m[1] === "brightness") return ["Media & Hardware", /brightness (press )?up/.test(action) ? "Brightness up" : "Brightness down"]
             return ["Island", ipcLabels[m[1]] || (m[1].charAt(0).toUpperCase() + m[1].slice(1))]
         }
         if (/exec_cmd\(terminal \.\. " -e btop"\)/.test(action)) return ["Apps", "System monitor"]
