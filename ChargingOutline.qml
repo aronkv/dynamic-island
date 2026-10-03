@@ -13,7 +13,7 @@ Item {
     property bool shown: false
 
     readonly property color green: "#32d74b"
-    readonly property real sw: 2
+    readonly property real sw: 3.5
     readonly property real i: sw / 2               // inset: stroke stays on the pill
     readonly property real e: ear
     readonly property real er: e + i                // ear arc radius (concave flare)
