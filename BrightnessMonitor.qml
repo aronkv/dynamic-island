@@ -63,7 +63,29 @@ Item {
     // The step we last set ourselves; -1 = follow sysfs.
     property int _ownStep: -1
     property int _ownRaw: -1
-    readonly property int stepIndex: (_ownStep >= 0 && _rawNow === _ownRaw) || (_ownStep >= 0 && _rawNow < 0)
+    // _ownFresh: we set a level < 1 s ago. sysfs doesn't reliably notify
+    // (inotify on attribute writes), so until the file is re-read _rawNow is
+    // still the old value — basing the next step on it made held / fast
+    // key presses re-set the same level over and over (slow ramp).
+    // It stays set until the file actually reads back our value (forcing a
+    // re-read after 1 s, giving up after ~3 s): dropping it on a timer alone
+    // let the OSD jump back to a stale level after a long hold.
+    property bool _ownFresh: false
+    Timer {
+        id: ownFreshTimer
+        interval: 1000
+        repeat: true
+        property int tries: 0
+        onTriggered: {
+            if (brightnessMonitor._rawNow === brightnessMonitor._ownRaw || ++tries > 2) {
+                brightnessMonitor._ownFresh = false
+                stop()
+            } else {
+                brightnessFile.reload()
+            }
+        }
+    }
+    readonly property int stepIndex: (_ownStep >= 0 && (_ownFresh || _rawNow === _ownRaw || _rawNow < 0))
         ? _ownStep : stepFor(_rawNow)
 
     // 0..1 level for the OSD — exactly stepIndex/steps, so the bar sits on
@@ -84,6 +106,9 @@ Item {
         if (moved) {
             _ownStep = next
             _ownRaw = rawFor(next)
+            _ownFresh = true
+            ownFreshTimer.tries = 0
+            ownFreshTimer.restart()
             setProc.command = ["brightnessctl", "-q", "set", String(_ownRaw)]
             setProc.startDetached()
         }

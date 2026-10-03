@@ -596,11 +596,11 @@ PanelWindow {
             if (PowerProfiles.profile === PowerProfile.PowerSaver) {
                 if (brightnessMonitor.stepIndex > target) {
                     island._brightnessBeforeSaver = brightnessMonitor.stepIndex
-                    brightnessMonitor.step(target - brightnessMonitor.stepIndex)
+                    island.quietBrightnessStep(target - brightnessMonitor.stepIndex)
                 }
             } else if (island._brightnessBeforeSaver >= 0) {
                 if (brightnessMonitor.stepIndex === target)
-                    brightnessMonitor.step(island._brightnessBeforeSaver - target)
+                    island.quietBrightnessStep(island._brightnessBeforeSaver - target)
                 island._brightnessBeforeSaver = -1
             }
         }
@@ -698,12 +698,23 @@ PanelWindow {
         // Key presses at the ends don't change the level but still show
         // the OSD (the sun just doesn't turn).
         function onStepped(direction, moved) {
-            if (moved) brightnessContent.spin(direction)
+            if (moved && !island._brightnessQuiet) brightnessContent.spin(direction)
             island.showBrightnessOsd()
         }
     }
+    // Brightness changes the island makes on its own (Power Saver dim /
+    // restore, which also happens on plugging in) don't pop the OSD: set
+    // for 1.5 s around them, since the level change arrives with the
+    // sysfs re-read a bit later.
+    property bool _brightnessQuiet: false
+    Timer { id: brightnessQuietTimer; interval: 1500; onTriggered: island._brightnessQuiet = false }
+    function quietBrightnessStep(delta) {
+        _brightnessQuiet = true
+        brightnessQuietTimer.restart()
+        brightnessMonitor.step(delta)
+    }
     function showBrightnessOsd() {
-        if (!island._brightnessReady) return
+        if (!island._brightnessReady || island._brightnessQuiet) return
         island.brightnessActive = true
         brightnessCollapseTimer.restart()
         island.volumeActive = false
@@ -714,20 +725,62 @@ PanelWindow {
         target: "brightness"
         function up(): void { island._brightnessKey(1) }
         function down(): void { island._brightnessKey(-1) }
+        // One call per key event (the brightness keys' own repeat while
+        // held); see _brightnessPress for the hold ramp.
+        function press(direction: string): void { island._brightnessPress(direction === "down" ? -1 : 1) }
     }
-    // Holding a brightness key (Hyprland repeats the bind) speeds up: calls
-    // < 250 ms apart in the same direction form a streak; after 3 repeats
-    // each step moves 2 of the 20 levels, after 8 repeats 3.
-    property int _brightnessStreak: 0
-    property int _brightnessLastDir: 0
+    // Each tap is exactly one level (the old tap-streak acceleration made
+    // quick tapping overshoot).
+    function _brightnessKey(dir) { brightnessMonitor.step(dir) }
+    // Holding the key: this laptop's brightness keys never report a held
+    // key — every event is press + release within a few ms (logged), and
+    // holding just repeats that: the 2nd event ~520 ms after the 1st, then
+    // one every ~260 ms. So a hold is recognised by that cadence: the
+    // initial-repeat gap (450–620 ms) followed by a repeat gap (230–320 ms),
+    // same direction — quick manual tapping doesn't start that way. Then
+    // qs ramps one level every 60 ms for as long as the repeats keep
+    // coming (stops 350 ms after the last one, at either end, or after 3 s).
+    property int _brightnessHoldDir: 0
     property real _brightnessLastTime: 0
-    function _brightnessKey(dir) {
+    property real _brightnessPrevGap: 1e9
+    function _brightnessPress(dir) {
         const now = Date.now()
-        _brightnessStreak = (dir === _brightnessLastDir && now - _brightnessLastTime < 250) ? _brightnessStreak + 1 : 0
-        _brightnessLastDir = dir
+        const gap = dir === _brightnessHoldDir ? now - _brightnessLastTime : 1e9
+        const prevGap = _brightnessPrevGap
         _brightnessLastTime = now
-        const size = _brightnessStreak >= 8 ? 3 : _brightnessStreak >= 3 ? 2 : 1
-        brightnessMonitor.step(dir * size)
+        _brightnessPrevGap = gap
+        _brightnessHoldDir = dir
+        if (brightnessHoldRamp.running) {
+            if (gap < 350) { brightnessHoldAlive.restart(); return }
+            _brightnessHoldStop()
+        }
+        _brightnessKey(dir)
+        if (gap >= 230 && gap <= 320 && prevGap >= 450 && prevGap <= 620) _brightnessStartRamp()
+    }
+    function _brightnessStartRamp() {
+        brightnessHoldRamp.ticks = 0
+        brightnessHoldRamp.start()
+        brightnessHoldAlive.restart()
+    }
+    function _brightnessHoldStop() {
+        brightnessHoldRamp.stop()
+        brightnessHoldAlive.stop()
+    }
+    Timer {
+        id: brightnessHoldAlive
+        interval: 350
+        onTriggered: island._brightnessHoldStop()
+    }
+    Timer {
+        id: brightnessHoldRamp
+        property int ticks: 0
+        interval: 60
+        repeat: true
+        onTriggered: {
+            const before = brightnessMonitor.stepIndex
+            brightnessMonitor.step(island._brightnessHoldDir)
+            if (brightnessMonitor.stepIndex === before || ++ticks > 50) island._brightnessHoldStop()
+        }
     }
 
     Connections {
