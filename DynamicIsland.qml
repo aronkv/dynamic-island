@@ -1633,13 +1633,16 @@ PanelWindow {
                     }
 
                     // No cover (e.g. a browser tab without the Plasma
-                    // integration extension's player): the app's own icon
-                    // instead of an empty grey square.
+                    // integration extension's player), or a cover file that
+                    // is already gone (that extension deletes its /tmp
+                    // artwork on track change / tab close while the player
+                    // still advertises it): the app's own icon instead of an
+                    // empty grey square.
                     IconImage {
                         anchors.centerIn: parent
                         implicitSize: 20
                         visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
-                            && !mprisMonitor.anyPlayer.trackArtUrl
+                            && (!mprisMonitor.anyPlayer.trackArtUrl || artImage.status === Image.Error)
                         source: {
                             const p = mprisMonitor.anyPlayer
                             if (!p) return ""
@@ -2510,6 +2513,21 @@ PanelWindow {
                         maskSpreadAtMin: 0.0
                         maskThresholdMax: 1.0
                         maskSpreadAtMax: 0.0
+                    }
+
+                    // No cover / cover file already deleted: the app's icon
+                    // on the placeholder (same fallback as the idle pill).
+                    IconImage {
+                        anchors.centerIn: parent
+                        implicitSize: 30
+                        visible: mprisMonitor.anyPlayer !== null
+                            && (!mprisMonitor.anyPlayer.trackArtUrl || mediaArtImage.status === Image.Error)
+                        source: {
+                            const p = mprisMonitor.anyPlayer
+                            if (!p) return ""
+                            const e = DesktopEntries.heuristicLookup(p.desktopEntry || p.identity)
+                            return Quickshell.iconPath(e ? e.icon : "", "audio-x-generic")
+                        }
                     }
                 }
 
