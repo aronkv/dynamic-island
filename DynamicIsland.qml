@@ -1251,7 +1251,7 @@ PanelWindow {
                     return 340
                 case "volume": return 300
                 case "brightness": return 300
-                case "charging": return 370
+                case "charging": return 240
                 case "lowbattery": return 430
                 case "power": return 440
                 case "launcher": return 540
@@ -1328,7 +1328,7 @@ PanelWindow {
                 case "notification": return island.currentNotification && String(island.currentNotification.body || "").trim() !== "" ? 86 : 66
                 case "volume": return 64
                 case "brightness": return 64
-                case "charging": return 72
+                case "charging": return settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
                 case "lowbattery": return 116
                 case "power": return 196
                 case "launcher": return 470
@@ -3049,6 +3049,21 @@ PanelWindow {
         id: notchEarRight
         rightSide: true
         x: notch.x + notch.width
+    }
+
+    // Charging: green light running around the pill, ears included —
+    // outside notch because notch clips its children.
+    ChargingOutline {
+        x: notch.x - ear
+        y: notch.y
+        width: notch.width + 2 * ear
+        height: notch.height
+        ear: notchEarLeft.width
+        cornerRadius: notch.bottomLeftRadius
+        shown: island.displayState === "charging"
+        opacity: shown ? 1 : 0
+        visible: opacity > 0
+        FadeBehavior on opacity {}
     }
 
     // Charging badge: a sibling of notch, not content inside it — an
