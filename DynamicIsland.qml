@@ -305,6 +305,8 @@ PanelWindow {
         id: brightnessMonitor
     }
 
+    IconCacheMonitor {}
+
     property var currentNotification: null
     property bool notificationActive: false
     property bool mediaExpandedRequested: false
