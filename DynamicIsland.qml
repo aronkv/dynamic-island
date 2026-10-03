@@ -712,8 +712,22 @@ PanelWindow {
 
     IpcHandler {
         target: "brightness"
-        function up(): void { brightnessMonitor.step(1) }
-        function down(): void { brightnessMonitor.step(-1) }
+        function up(): void { island._brightnessKey(1) }
+        function down(): void { island._brightnessKey(-1) }
+    }
+    // Holding a brightness key (Hyprland repeats the bind) speeds up: calls
+    // < 250 ms apart in the same direction form a streak; after 3 repeats
+    // each step moves 2 of the 20 levels, after 8 repeats 3.
+    property int _brightnessStreak: 0
+    property int _brightnessLastDir: 0
+    property real _brightnessLastTime: 0
+    function _brightnessKey(dir) {
+        const now = Date.now()
+        _brightnessStreak = (dir === _brightnessLastDir && now - _brightnessLastTime < 250) ? _brightnessStreak + 1 : 0
+        _brightnessLastDir = dir
+        _brightnessLastTime = now
+        const size = _brightnessStreak >= 8 ? 3 : _brightnessStreak >= 3 ? 2 : 1
+        brightnessMonitor.step(dir * size)
     }
 
     Connections {
