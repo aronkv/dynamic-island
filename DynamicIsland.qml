@@ -354,6 +354,16 @@ PanelWindow {
     // (pill height - gap): centering them with a gap on both sides (32 px)
     // read as too small, and hanging past the pill's bottom looked off.
     readonly property int idleBadgeGap: 3
+
+    // The media card's final size. Its content (ambient blur, cava bars,
+    // controls, lyrics) is laid out at this fixed size and clipped by notch
+    // while notch morphs, instead of anchors.fill-ing the animating notch:
+    // that re-laid-out every word-wrapped lyric line (the ListView keeps
+    // them all, cacheBuffer 5000), re-ran glideToCurrent() and re-blurred
+    // the cover and the lyrics texture on every frame of the open/close
+    // animation, which is what made opening the island lag during playback.
+    readonly property int mediaCardWidth: 460
+    readonly property int mediaCardHeight: mprisMonitor.anyPlayer !== null ? 410 : 170
     readonly property int idleBadgeSize: (settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40) - idleBadgeGap
     // Set by dropping a file onto the pill (see the DropArea inside notch
     // below) — stays open (no auto-collapse timer) while the user picks a
@@ -1177,7 +1187,7 @@ PanelWindow {
         readonly property real targetWidth: {
             switch (island.displayState) {
                 case "notification": return 380
-                case "mediaExpanded": return 460
+                case "mediaExpanded": return island.mediaCardWidth
                 case "overview":
                     // Bluetooth's device grid needs real room — DynamicGlacier's
                     // own reference implementation ships this exact width (500)
@@ -1235,7 +1245,7 @@ PanelWindow {
                 // same live debug-measurement technique used to fix this
                 // row's vertical position: measured content height ~117 +
                 // margins ~32, rounded up for comfortable padding).
-                case "mediaExpanded": return mprisMonitor.anyPlayer !== null ? 410 : 170
+                case "mediaExpanded": return island.mediaCardHeight
                 case "overview":
                     // Grown from 280 to fit the right-click expanded detail
                     // section (Security/Band/Channel/Frequency/Speed/BSSID)
@@ -2240,7 +2250,10 @@ PanelWindow {
         // blurred and dimmed, filling the whole card behind its content.
         Item {
             id: mediaAmbient
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: island.mediaCardWidth
+            height: island.mediaCardHeight
             opacity: island.displayState === "mediaExpanded" && mprisMonitor.anyPlayer !== null
                 && ambientArt.status === Image.Ready ? 1 : 0
             visible: opacity > 0
@@ -2280,9 +2293,9 @@ PanelWindow {
         // album cover's color, hanging from the top edge behind the content.
         Item {
             id: mediaViz
-            anchors.left: parent.left
-            anchors.right: parent.right
             anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: island.mediaCardWidth
             height: 110
             opacity: island.displayState === "mediaExpanded" && mprisMonitor.anyPlayer !== null ? 1 : 0
             visible: opacity > 0
@@ -2313,8 +2326,11 @@ PanelWindow {
 
         ColumnLayout {
             id: mediaExpandedContent
-            anchors.fill: parent
-            anchors.margins: 16
+            anchors.top: parent.top
+            anchors.topMargin: 16
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: island.mediaCardWidth - 32
+            height: island.mediaCardHeight - 32
             spacing: 12
             z: 1
             opacity: island.displayState === "mediaExpanded" ? 1 : 0
