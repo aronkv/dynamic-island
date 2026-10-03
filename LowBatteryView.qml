@@ -7,9 +7,10 @@ import QtQuick.Layouts
 //   20 % — "Low Battery", yellow: remaining time + Low Power Mode toggle.
 //   10 % — "Battery Low", orange: Low Power Mode is switched on for you.
 //    5 % — "Battery Critical", red, the glyph and a red rim pulse; offers to
-//          dim the display. Stays until dismissed or plugged in.
+//          dim the display.
 //    1 % — "Almost Empty", red, faster pulse; offers "Sleep Now" (locks
-//          first). Stays until dismissed or plugged in.
+//          first).
+// Every level collapses by itself (no Dismiss button — user request).
 // The same battery-glyph language as ChargingView, drained instead of filling.
 Item {
     id: root
@@ -17,7 +18,6 @@ Item {
     property bool shown: false
     property int level: 20              // threshold that fired: 20 | 10 | 5 | 1
     property bool lowPowerOn: false
-    signal dismissRequested()
     signal lowPowerRequested()
     signal dimRequested()
     signal sleepRequested()
@@ -231,10 +231,6 @@ Item {
                 primary: true
                 accent: "#ff453a"
                 onClicked: root.sleepRequested()
-            }
-            ActionPill {
-                label: "Dismiss"
-                onClicked: root.dismissRequested()
             }
         }
     }

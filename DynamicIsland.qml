@@ -559,8 +559,8 @@ PanelWindow {
 
     // ── Low battery (LowBatteryView) ──────────────────────────────────
     // Fires once per threshold (20 → 10 → 5 → 1 %) as the level drops on
-    // battery; plugging in resets it. 20/10 collapse by themselves, 5/1
-    // stay until dismissed or plugged in. Startup never fires: the bucket
+    // battery; plugging in resets it. Every level collapses by itself
+    // (the Dismiss button was removed). Startup never fires: the bucket
     // the battery is already in counts as announced.
     property bool lowBatteryActive: false
     property int lowBatteryLevel: 20
@@ -575,8 +575,7 @@ PanelWindow {
     function showLowBattery(level, quiet) {
         lowBatteryLevel = level
         lowBatteryActive = true
-        if (level >= 10) lowBatteryCollapseTimer.restart()
-        else lowBatteryCollapseTimer.stop()
+        lowBatteryCollapseTimer.restart()
         if (quiet) return
         // Auto Low Power already switches at 20 % (BatteryMonitor). Level 10
         // nudges once more in case it was turned back off since then.
@@ -584,6 +583,29 @@ PanelWindow {
         lowBatterySound.command = ["pw-play", "/usr/share/sounds/freedesktop/stereo/" + (level >= 10 ? "dialog-warning.oga" : "dialog-error.oga")]
         lowBatterySound.running = true
     }
+    // Power Saver dims the display a little (user request): down to step 9
+    // of 20 (≈ 18 % raw), gentler than the 5 % alert's "Dim Display" (step
+    // 6). Leaving Power Saver restores the previous level, but only if the
+    // brightness wasn't changed by hand in the meantime.
+    readonly property int powerSaverBrightnessStep: 9
+    property int _brightnessBeforeSaver: -1
+    Connections {
+        target: PowerProfiles
+        function onProfileChanged() {
+            const target = island.powerSaverBrightnessStep
+            if (PowerProfiles.profile === PowerProfile.PowerSaver) {
+                if (brightnessMonitor.stepIndex > target) {
+                    island._brightnessBeforeSaver = brightnessMonitor.stepIndex
+                    brightnessMonitor.step(target - brightnessMonitor.stepIndex)
+                }
+            } else if (island._brightnessBeforeSaver >= 0) {
+                if (brightnessMonitor.stepIndex === target)
+                    brightnessMonitor.step(island._brightnessBeforeSaver - target)
+                island._brightnessBeforeSaver = -1
+            }
+        }
+    }
+
     Timer {
         id: lowBatteryCollapseTimer
         interval: island.lowBatteryLevel >= 20 ? 7000 : 9000
@@ -2220,7 +2242,6 @@ PanelWindow {
             visible: opacity > 0
             FadeBehavior on opacity {}
             ScaleBehavior on scale {}
-            onDismissRequested: island.lowBatteryActive = false
             onLowPowerRequested: {
                 batteryMonitor.setProfile(PowerProfiles.profile === PowerProfile.PowerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver)
                 lowBatteryCollapseTimer.restart()
