@@ -627,8 +627,6 @@ PanelWindow {
     }
     Timer { id: lowBatteryReadyTimer; interval: 2500; running: true; onTriggered: island._lowBatteryAnnounced = batteryMonitor.onBattery ? island._lowBatteryBucket(batteryMonitor.percentage) : 101 }
     Process { id: lowBatterySound }
-    Process { id: lowBatterySleepProc }
-    Timer { id: lowBatterySleepTimer; interval: 600; onTriggered: { lowBatterySleepProc.command = ["systemctl", "suspend"]; lowBatterySleepProc.running = true } }
     Connections {
         target: batteryMonitor
         function onPercentageChanged() {
@@ -1338,7 +1336,7 @@ PanelWindow {
                 case "volume": return 300
                 case "brightness": return 300
                 case "charging": return 240
-                case "lowbattery": return 430
+                case "lowbattery": return 260
                 case "power": return 520
                 case "launcher": return 540
                 case "notifications": return 460
@@ -1425,7 +1423,7 @@ PanelWindow {
                 case "volume": return 64
                 case "brightness": return 64
                 case "charging": return island.idleHeight
-                case "lowbattery": return 116
+                case "lowbattery": return island.idleHeight
                 case "power": return 196
                 case "launcher": return 470
                 case "system": return 620
@@ -2436,21 +2434,6 @@ PanelWindow {
             visible: opacity > 0
             FadeBehavior on opacity {}
             ScaleBehavior on scale {}
-            onLowPowerRequested: {
-                batteryMonitor.setProfile(PowerProfiles.profile === PowerProfile.PowerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver)
-                lowBatteryCollapseTimer.restart()
-            }
-            onDimRequested: {
-                // Down to step 6 of 20 (≈ 7 % raw) — readable, far less power.
-                const target = 6
-                if (brightnessMonitor.stepIndex > target) brightnessMonitor.step(target - brightnessMonitor.stepIndex)
-                island.lowBatteryActive = false
-            }
-            onSleepRequested: {
-                island.lowBatteryActive = false
-                lockScreen.lock()
-                lowBatterySleepTimer.restart()
-            }
         }
 
         // Charger connected — see ChargingView.qml.
