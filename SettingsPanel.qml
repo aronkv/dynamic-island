@@ -576,9 +576,9 @@ ColumnLayout {
                         SegRow {
                             label: "Bitrate"
                             SegTrack {
-                                labels: ["8 Mbps", "15", "25", "40"]
-                                values: [8000, 15000, 25000, 40000]
-                                current: panel.store ? panel.store.recordBitrate : 15000
+                                labels: ["8 Mbps", "15", "40", "Lossless"]
+                                values: [8000, 15000, 40000, 0]
+                                current: panel.store ? panel.store.recordBitrate : 0
                                 onPicked: (v) => { if (panel.store) panel.store.recordBitrate = v }
                             }
                         }

@@ -37,12 +37,17 @@ Item {
     function recorderArgs(file) {
         const st = settingsStore
         const fps = st ? st.recordFps : 60
-        // Constant bitrate: with -bm cbr, -q takes the bitrate in kbps
-        // (QP presets gave no concrete figure and varied with content).
-        const kbps = st ? st.recordBitrate : 15000
+        // recordBitrate: 0 = lossless, otherwise a constant bitrate in kbps
+        // (with -bm cbr, -q takes kbps). Lossless can't go through the
+        // iGPU's VAAPI H.264 (no lossless mode), so it uses the CPU encoder:
+        // x264 at qp=0 (High 4:4:4 Predictive), preset ultrafast to keep up
+        // at 60 fps — verified: 1080p60 held 61 fps.
+        const kbps = st ? st.recordBitrate : 0
+        const video = kbps > 0 ? ["-bm", "cbr", "-q", String(kbps)]
+            : ["-encoder", "cpu", "-k", "h264", "-bm", "qp", "-ffmpeg-video-opts", "qp=0;preset=ultrafast"]
         const res = st ? st.recordResolution : "native"
         const sizes = { "1080": "1920x1080", "720": "1280x720", "480": "854x480" }
-        const args = ["gpu-screen-recorder", "-w", "screen", "-f", String(fps), "-bm", "cbr", "-q", String(kbps),
+        const args = ["gpu-screen-recorder", "-w", "screen", "-f", String(fps), ...video,
                       "-cursor", (st ? st.recordCursor : true) ? "yes" : "no"]
         if (sizes[res]) args.push("-s", sizes[res])
         const audio = []
