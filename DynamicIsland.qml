@@ -22,9 +22,8 @@ PanelWindow {
     // Reserves a small CONSTANT amount of screen space — always the idle
     // pill's own baseline size, never the notch's live size in other
     // states (mediaExpanded/overview/etc. still overlap windows exactly as
-    // before). Bound to the same idleHeight default/override already used
-    // for the notch's own idle-state sizing (settingsStore.idleHeight,
-    // 0 = auto/44) rather than to notch.height directly, since notch.height
+    // before). Bound to the idle pill's fixed height (island.idleHeight)
+    // rather than to notch.height directly, since notch.height
     // varies across every displayState and binding to it here would make
     // the reserved zone grow every time the island expands — defeating the
     // entire point of a stable reservation. ExclusionMode.Auto was
@@ -35,7 +34,7 @@ PanelWindow {
     // ~36px. Normal + an explicit exclusiveZone is the only combination
     // that reserves just the idle size.
     exclusionMode: ExclusionMode.Normal
-    exclusiveZone: settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
+    exclusiveZone: island.idleHeight
     // Normally non-focusable (a status overlay shouldn't steal keyboard focus
     // from whatever the user is actually working in). Granted only while a
     // real text-entry view is open, not globally — today that's the Wi-Fi
@@ -364,7 +363,9 @@ PanelWindow {
     // animation, which is what made opening the island lag during playback.
     readonly property int mediaCardWidth: 460
     readonly property int mediaCardHeight: mprisMonitor.anyPlayer !== null ? 410 : 170
-    readonly property int idleBadgeSize: (settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40) - idleBadgeGap
+    // The idle pill's height (also the reserved exclusive zone).
+    readonly property int idleHeight: 40
+    readonly property int idleBadgeSize: idleHeight - idleBadgeGap
     // Set by dropping a file onto the pill (see the DropArea inside notch
     // below) — stays open (no auto-collapse timer) while the user picks a
     // device, since forcing it away before they've acted would defeat the
@@ -1328,7 +1329,7 @@ PanelWindow {
                 default:
                     // Strip mode keeps the island's own width (only the
                     // height collapses, see targetHeight).
-                    return settingsStore.idleWidth > 0 ? settingsStore.idleWidth : (idleRow.implicitWidth + 36)
+                    return idleRow.implicitWidth + 36
             }
         }
         readonly property real targetHeight: {
@@ -1392,7 +1393,7 @@ PanelWindow {
                 case "notification": return island.currentNotification && String(island.currentNotification.body || "").trim() !== "" ? 86 : 66
                 case "volume": return 64
                 case "brightness": return 64
-                case "charging": return settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
+                case "charging": return island.idleHeight
                 case "lowbattery": return 116
                 case "power": return 196
                 case "launcher": return 470
@@ -1405,7 +1406,7 @@ PanelWindow {
                 default:
                     if (island.pillModeEffective === "strip" && !island.stripHovered) return 14
                     // Bumped from 36, explicit user request.
-                    return settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
+                    return island.idleHeight
             }
         }
 
@@ -1541,8 +1542,7 @@ PanelWindow {
 
         RowLayout {
             id: idleRow
-            // Pinned to a fixed point within the idle-height (44px, or
-            // settingsStore.idleHeight when overridden) band, not centered
+            // Pinned to a fixed point within the idle-height band, not centered
             // in the live (currently animating) parent height —
             // anchors.centerIn tracked the growing box as it resized for
             // "overview"/other states, dragging the still-fading-out row
@@ -2927,7 +2927,7 @@ PanelWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            height: settingsStore.idleHeight > 0 ? settingsStore.idleHeight : 40
+            height: island.idleHeight
             z: 1
             accent: island.accentColor
             readonly property bool shown: island.displayState === "idle" && island.workspaceActive

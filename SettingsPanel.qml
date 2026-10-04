@@ -634,26 +634,6 @@ ColumnLayout {
                     wrapMode: Text.WordWrap
                 }
             }
-
-            // Plain text button, iOS "destructive-less" link style.
-            Text {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 6
-                Layout.bottomMargin: 8
-                text: "Reset island size"
-                color: Theme.blue
-                font.pixelSize: 12
-                font.family: Theme.fontText
-                opacity: resetMouse.pressed ? 0.5 : 1
-
-                MouseArea {
-                    id: resetMouse
-                    anchors.fill: parent
-                    anchors.margins: -6
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: if (panel.store) { panel.store.idleWidth = 0; panel.store.idleHeight = 0 }
-                }
-            }
         }
     }
 

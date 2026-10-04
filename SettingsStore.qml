@@ -10,13 +10,6 @@ Item {
     property alias micIndicatorEnabled: adapter.micIndicatorEnabled
     property alias cameraIndicatorEnabled: adapter.cameraIndicatorEnabled
     property alias doNotDisturb: adapter.doNotDisturb
-    // 0 = auto-fit-to-content (today's behavior); non-zero overrides the
-    // idle notch's computed width/height. Set via the Settings panel's
-    // Idle Width/Height steppers (Round 2 of Extension 5) — the properties
-    // exist here first so DynamicIsland.qml's idle-size branch has
-    // something real to read even before that UI is built.
-    property alias idleWidth: adapter.idleWidth
-    property alias idleHeight: adapter.idleHeight
     // What renders next to the clock in the idle pill while something is
     // actually playing: "art" (album-art thumbnail, no text — the new
     // default), "title" (track title+artist text — the old standalone
@@ -104,8 +97,6 @@ Item {
             property bool micIndicatorEnabled: true
             property bool cameraIndicatorEnabled: true
             property bool doNotDisturb: false
-            property int idleWidth: 0
-            property int idleHeight: 0
             property string idlePlayerMode: "art"
             property bool autoLowPower: true
             property bool batteryBadge: true
