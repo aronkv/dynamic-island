@@ -31,7 +31,7 @@ Singleton {
     readonly property int radiusLarge: 18
 
     // Motion. The island morph is a timed OutCubic (DynamicIsland
-    // notch.morphDuration: 360 ms open, 180 ms into the pill, 200 ms OSD);
+    // notch.morphDuration: 400 ms open (OutQuad), 180 ms into the pill (OutCubic), 200 ms OSD);
     // content fades use a short ease-out.
     readonly property int fadeDuration: 220
     readonly property int contentScaleDuration: 380

@@ -1298,8 +1298,34 @@ PanelWindow {
         // The plain idle pill's width ([cover] [clock] [cava]), used for
         // the workspace dots whatever the now-playing mode shows.
         readonly property real plainPillWidth: artSlot.implicitWidth * 2 + idleClock.implicitWidth + clockRow.spacing * 2 + 36
+        // The state the notch's size follows. Opening a heavy panel from the
+        // pill lags displayState by ~3 frames: the panel's content is created
+        // on the first frame (a ~100 ms hitch), and with the morph already
+        // running the animation clock jumped ahead — the first visible frame
+        // showed the panel two-thirds open (seen in a recording). Starting
+        // the morph after that frame makes it grow smoothly from the pill.
+        // Light states (OSDs, banners, collapsing) follow immediately.
+        property string morphState: island.displayState
+        readonly property var _heavyStates: ["overview", "mediaExpanded", "launcher", "clipboard", "notifications", "activity", "system", "power", "localsend"]
+        Connections {
+            target: island
+            function onDisplayStateChanged() {
+                const st = island.displayState
+                if (notch._heavyStates.indexOf(st) !== -1 && notch._heavyStates.indexOf(notch.morphState) === -1 && !Theme.reduceMotion) {
+                    morphDelay.restart()
+                } else {
+                    morphDelay.stop()
+                    notch.morphState = st
+                }
+            }
+        }
+        Timer {
+            id: morphDelay
+            interval: 50
+            onTriggered: notch.morphState = island.displayState
+        }
         readonly property real targetWidth: {
-            switch (island.displayState) {
+            switch (notch.morphState) {
                 case "notification": return 380
                 case "mediaExpanded": return island.mediaCardWidth
                 case "overview":
@@ -1356,7 +1382,7 @@ PanelWindow {
             }
         }
         readonly property real targetHeight: {
-            switch (island.displayState) {
+            switch (notch.morphState) {
                 // 300 (original, header-less) + ~36 for the header row and
                 // its spacing (24px row + 12px spacing) — the wifi/bluetooth
                 // status row that briefly lived here as a separate row was
@@ -1449,10 +1475,19 @@ PanelWindow {
         // in ~80 ms. A fixed-duration OutCubic grows at a readable pace and
         // ends exactly on time, never past the target. Collapsing into the
         // pill is quicker than opening (user request); OSDs are short.
-        readonly property int morphDuration: Theme.reduceMotion ? 120 : osdMorph ? 200
-            : island.displayState === "idle" ? 180 : 360
-        Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
-        Behavior on animH { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
+        // Growing (opening) vs shrinking (back into the pill), decided from
+        // the live size against the target at the moment the animation
+        // starts. A property keyed on the state could still hold its old
+        // value when the Behavior read it (binding order), and the battery
+        // panel then opened with the 180 ms collapse timing.
+        readonly property bool growing: targetHeight >= height - 1 && targetWidth >= width - 1
+        readonly property int morphDuration: Theme.reduceMotion ? 120 : osdMorph ? 200 : growing ? 400 : 180
+        // Opening uses OutQuad: OutCubic covered most of the distance in the
+        // first frames and the panels seemed to pop out (user feedback).
+        // Collapsing keeps the snappier OutCubic.
+        readonly property int morphEasing: growing && !osdMorph ? Easing.OutQuad : Easing.OutCubic
+        Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: notch.morphEasing } }
+        Behavior on animH { NumberAnimation { duration: notch.morphDuration; easing.type: notch.morphEasing } }
 
         // Purely hover-tracking, not a click-consuming MouseArea — a
         // HoverHandler never intercepts press/click events, so it can sit
@@ -3129,11 +3164,32 @@ PanelWindow {
             FadeBehavior on opacity {}
         }
 
+        // Laid out at the overview's final size and revealed by the notch's
+        // clip, never at the springing notch's live size: with anchors.fill
+        // every sub-view (battery, Wi-Fi, …) re-laid itself out on every
+        // frame of the morph, and the first of those layouts stalled the
+        // opening (~100 ms). The size follows the target only while the
+        // overview is the morph state, so it keeps its last size while it
+        // fades out on close.
+        Binding {
+            target: quickOverviewPanel
+            property: "width"
+            value: notch.targetWidth
+            when: notch.morphState === "overview"
+            restoreMode: Binding.RestoreNone
+        }
+        Binding {
+            target: quickOverviewPanel
+            property: "height"
+            value: notch.targetHeight
+            when: notch.morphState === "overview"
+            restoreMode: Binding.RestoreNone
+        }
         QuickOverviewPanel {
             id: quickOverviewPanel
             panelOpen: island.overviewPanelOpen
-            anchors.fill: parent
-            anchors.margins: 0
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
             z: 1
             batteryMonitor: batteryMonitor
             networkMonitor: networkMonitor
