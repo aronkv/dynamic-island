@@ -223,6 +223,7 @@ ColumnLayout {
         property bool active: false
         signal clicked()
         Layout.fillWidth: true
+        Layout.preferredWidth: 1   // equal segments, matching the highlight
         implicitHeight: 28
 
         Text {
@@ -283,16 +284,18 @@ ColumnLayout {
         }
     }
 
+    // Label above a full-width segmented track: in the two-column layout a
+    // label beside the track left each segment too narrow ("Native" and
+    // "Lossless" ran into their box edges, "Resolution" into the track).
     component SegRow: Item {
         id: segRow
         property string label: ""
         default property alias track: slot.data
         Layout.fillWidth: true
-        implicitHeight: 44
+        implicitHeight: 68
         Text {
             x: 12
-            anchors.verticalCenter: parent.verticalCenter
-            width: 62
+            y: 8
             text: segRow.label
             color: "#ffffff"
             font.pixelSize: 13
@@ -300,9 +303,9 @@ ColumnLayout {
         }
         RowLayout {
             id: slot
-            x: 82
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 92
+            x: 12
+            y: 30
+            width: parent.width - 24
         }
     }
 
