@@ -28,15 +28,6 @@ Item {
         else { slideArm.stop(); slideEnabled = false }
     }
     Timer { id: slideArm; interval: 60; onTriggered: panel.slideEnabled = true }
-    // A keyboard switch between panels (SUPER+I → SUPER+B) cross-fades in
-    // place: the sideways push made the incoming view look shifted and
-    // clipped while the island was still resizing.
-    function switchTo(view) {
-        Theme.switching = true
-        slideEnabled = false
-        activeView = view
-        slideArm.restart()
-    }
     property bool mediaPlaying: false
     readonly property bool calcHistoryVisible: calculatorPanel.historyVisible
     readonly property bool calcGraphVisible: calculatorPanel.graphVisible

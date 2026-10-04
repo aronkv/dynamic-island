@@ -40,9 +40,4 @@ Singleton {
     // Settings → Reduce motion (bound from DynamicIsland to settingsStore):
     // no springs/overshoot, no slides, short plain fades, no ambient loops.
     property bool reduceMotion: false
-    // True for a moment while the island switches straight from one panel
-    // to another (DynamicIsland.beginSwitch). Content then cross-fades with
-    // no gap and no scale-in, so the switch reads as one morph instead of
-    // the panel reopening from inside.
-    property bool switching: false
 }

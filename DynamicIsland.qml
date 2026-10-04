@@ -423,44 +423,51 @@ PanelWindow {
     // SUPER+<key> for an overview sub-view: pressing it while another panel
     // is open switches straight to this view (the island stays open and
     // morphs) instead of closing everything; only the same key again closes.
+    // Switching between panels (user choice): the open panel collapses back
+    // into the pill first, then the other one opens — two clean morphs
+    // instead of one panel morphing into the next. `openFn` runs once the
+    // collapse has finished; a newer key press replaces a pending one.
+    property var _pendingOpen: null
+    function _switchVia(openFn) {
+        if (island.displayState === "idle" && !switchOpenTimer.running) { openFn(); return }
+        island.closeAllPanels()
+        island._pendingOpen = openFn
+        switchOpenTimer.restart()
+    }
+    Timer {
+        id: switchOpenTimer
+        interval: 300          // the 280 ms collapse + a beat
+        onTriggered: {
+            const fn = island._pendingOpen
+            island._pendingOpen = null
+            if (fn) fn()
+        }
+    }
+
     function toggleOverviewView(view) {
         if (island.overviewPanelOpen && quickOverviewPanel.activeView === view) {
+            switchOpenTimer.stop()
             island.closeAllPanels()
             return
         }
-        if (island.overviewPanelOpen) {
-            quickOverviewPanel.switchTo(view)
-            return
-        }
-        // From another panel (launcher, media card…) straight to the view:
-        // no closeAllPanels() first, which passed through "idle" and made
-        // the island start collapsing before growing again.
-        if (island.displayState !== "idle") Theme.switching = true
-        quickOverviewPanel.activeView = view
-        island.overviewPanelOpen = true        // also closes the exclusive panels
-        island.mediaExpandedRequested = false
+        island._switchVia(function() {
+            quickOverviewPanel.activeView = view
+            island.overviewPanelOpen = true
+            island.mediaExpandedRequested = false
+        })
     }
 
     // Exclusive panels (launcher, clipboard, notifications, activity,
-    // system, power): same key closes, another panel switches straight
-    // over — the new flag is raised before the others drop, so displayState
-    // never passes through "idle" (which morphed back toward the pill and
-    // then reopened: 503 → 355 → 463 px in a recording).
+    // system, power): same key closes; another panel's key collapses the
+    // open one, then opens it (see _switchVia).
     readonly property var _exclusiveFlags: ["powerMenuOpen", "launcherOpen", "clipboardOpen", "notificationsOpen", "activityOpen", "systemOpen"]
     function toggleExclusive(flag) {
-        if (island[flag]) { island.closeAllPanels(); return }
-        if (island.displayState !== "idle") Theme.switching = true
-        island[flag] = true
-        for (const f of island._exclusiveFlags) if (f !== flag) island[f] = false
-        island.overviewPanelOpen = false
-        island.mediaExpandedRequested = false
-        island.localSendActive = false
+        if (island[flag]) { switchOpenTimer.stop(); island.closeAllPanels(); return }
+        island._switchVia(function() {
+            island.closeAllPanels()
+            island[flag] = true
+        })
     }
-    Connections {
-        target: Theme
-        function onSwitchingChanged() { if (Theme.switching) switchingReset.restart() }
-    }
-    Timer { id: switchingReset; interval: 450; onTriggered: Theme.switching = false }
 
     function closeAllPanels() {
         island.mediaExpandedRequested = false
