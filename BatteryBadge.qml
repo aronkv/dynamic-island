@@ -4,14 +4,18 @@ import QtQuick
 // when Settings → Battery → "Battery outside the pill" is on — and always
 // at ≤ 10 %, then with the minutes left until empty; ChargeBadge takes
 // over while plugged in. No background: like ChargeBadge's bolt, the
-// glyph and the percentage sit on the wallpaper with a soft dark halo. The level fill tracks the charge; iOS
-// colors: red at ≤ 10 %, yellow while Power Saver is on, white otherwise.
+// glyph and text sit on the wallpaper with a soft dark halo. The level
+// fill tracks the charge; iOS colors: red at ≤ 10 %, yellow while Power
+// Saver is on, white otherwise. The percentage can sit next to the glyph
+// or, iOS 16 style, inside a larger glyph (`percentInside`), dark over the
+// fill and light over the empty part.
 // Click → `clicked` (the island opens the battery view).
 Item {
     id: badge
     property var battery: null          // BatteryMonitor
     property bool enabledSetting: true
     property bool showPercent: true
+    property bool percentInside: false
     property bool lowPower: false
     property int size: 44
     signal clicked()
@@ -23,15 +27,21 @@ Item {
     readonly property int minutesLeft: low && battery && battery.timeRemaining > 0 ? Math.round(battery.timeRemaining / 60) : -1
     readonly property color tint: pct <= 10 ? "#ff453a" : lowPower ? "#ffd60a" : "#ffffff"
 
-    readonly property string label: (showPercent || low)
-        ? Math.round(pct) + "%" + (minutesLeft >= 0
-            ? " · " + (minutesLeft >= 60 ? Math.floor(minutesLeft / 60) + " h " + minutesLeft % 60 : minutesLeft) + " min"
-            : "")
+    readonly property bool inside: percentInside && (showPercent || low)
+    readonly property string minutesText: minutesLeft >= 0
+        ? (minutesLeft >= 60 ? Math.floor(minutesLeft / 60) + " h " + minutesLeft % 60 : minutesLeft) + " min"
+        : ""
+    // Text beside the glyph: "64%" (+ " · 25 min" when low), or only the
+    // minutes when the percentage is drawn inside.
+    readonly property string label: inside ? minutesText
+        : (showPercent || low) ? Math.round(pct) + "%" + (minutesText !== "" ? " · " + minutesText : "")
         : ""
 
-    // Glyph geometry (px): body 28×15, nub 2.5×6, 7 px gap after the text.
-    readonly property real bodyW: 28
-    readonly property real bodyH: 15
+    // Glyph geometry (px): 28×15 body, or 36×18 with the number inside;
+    // nub 2.5×6; 7 px gap after the text.
+    readonly property real bodyW: inside ? 36 : 28
+    readonly property real bodyH: inside ? 18 : 15
+    readonly property real cornerR: inside ? 5.5 : 4.5
     readonly property real gap: label !== "" ? 7 : 0
     readonly property real textW: label !== "" ? metrics.advanceWidth : 0
     readonly property real glyphX: textW + gap
@@ -61,7 +71,7 @@ Item {
         font.family: Theme.fontText
     }
 
-    // Everything is drawn relative to this centred box.
+    // Everything is drawn relative to this right-aligned box.
     Item {
         id: box
         width: badge.contentW
@@ -69,80 +79,67 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: badge.rightInset
 
-        // Halo rings shared by glyph and text: faint dark copies offset on
-        // rings around the shape add up to a soft falloff. (Stroking the
-        // outline several times, as ChargeBadge does for the bolt, drew
-        // spiky artefacts on these small curves and on PathText.)
-        readonly property var haloOffsets: {
+        // ── Halo ──
+        // Glyph: concentric rounded-rect rings growing outward, each fainter
+        // — a smooth falloff with no lobes (offset copies of the outline
+        // left visible steps on the straight edges).
+        Repeater {
+            model: 6
+            Rectangle {
+                required property int index
+                readonly property real grow: index + 1
+                x: badge.glyphX - grow
+                y: badge.glyphTop - grow
+                width: badge.bodyW + 4 + grow * 2      // + the nub
+                height: badge.bodyH + grow * 2
+                radius: badge.cornerR + grow
+                color: "transparent"
+                border.width: 1.2
+                border.color: Qt.rgba(0, 0, 0, 0.11 - index * 0.017)
+            }
+        }
+        // Text: faint dark copies on two tight rings × 16 directions
+        // (stroking glyph outlines that wide renders spiky artefacts).
+        readonly property var textHalo: {
             const out = []
-            const rings = [{ r: 5, a: 0.025 }, { r: 3.5, a: 0.035 }, { r: 2, a: 0.05 }, { r: 1, a: 0.07 }]
+            const rings = [{ r: 2.2, a: 0.03 }, { r: 1.1, a: 0.05 }]
             for (const ring of rings)
-                for (let k = 0; k < 12; k++)
-                    out.push({ dx: ring.r * Math.cos(k * Math.PI / 6), dy: ring.r * Math.sin(k * Math.PI / 6), a: ring.a })
+                for (let k = 0; k < 16; k++)
+                    out.push({ dx: ring.r * Math.cos(k * Math.PI / 8), dy: ring.r * Math.sin(k * Math.PI / 8), a: ring.a })
             return out
         }
         Repeater {
-            model: box.haloOffsets
-            Item {
-                required property var modelData
-                anchors.fill: parent
-                Rectangle {
-                    x: badge.glyphX + modelData.dx
-                    y: badge.glyphTop + modelData.dy
-                    width: badge.bodyW
-                    height: badge.bodyH
-                    radius: 4.5
-                    color: "transparent"
-                    border.width: 1.6
-                    border.color: Qt.rgba(0, 0, 0, modelData.a)
-                }
-                Rectangle {
-                    x: badge.glyphX + badge.bodyW + 1.2 + modelData.dx
-                    y: badge.glyphTop + badge.bodyH / 2 - 3 + modelData.dy
-                    width: 2.5
-                    height: 6
-                    radius: 1
-                    color: Qt.rgba(0, 0, 0, modelData.a)
-                }
-            }
-        }
-        // Same halo for the percentage text.
-        Repeater {
-            model: box.haloOffsets
+            model: badge.label !== "" ? box.textHalo : []
             Text {
                 required property var modelData
                 x: modelData.dx
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: modelData.dy
-                visible: badge.label !== ""
                 text: badge.label
                 color: Qt.rgba(0, 0, 0, modelData.a)
-                font.pixelSize: metrics.font.pixelSize
-                font.weight: metrics.font.weight
-                font.family: metrics.font.family
+                font: metrics.font
             }
         }
 
-        // Percentage.
+        // Text beside the glyph.
         Text {
             x: 0
             anchors.verticalCenter: parent.verticalCenter
             visible: badge.label !== ""
             text: badge.label
             color: badge.tint
-            font.pixelSize: metrics.font.pixelSize
-            font.weight: metrics.font.weight
-            font.family: metrics.font.family
+            font: metrics.font
         }
 
-        // Glyph: outline + nub, then the level fill inside.
+        // ── Glyph ──
         Rectangle {
+            id: body
             x: badge.glyphX
             y: badge.glyphTop
             width: badge.bodyW
             height: badge.bodyH
-            radius: 4.5
-            color: "transparent"
+            radius: badge.cornerR
+            color: badge.inside ? Qt.rgba(0, 0, 0, 0.25) : "transparent"
             border.width: 1.6
             border.color: Qt.rgba(badge.tint.r, badge.tint.g, badge.tint.b, 0.6)
         }
@@ -155,13 +152,47 @@ Item {
             color: Qt.rgba(badge.tint.r, badge.tint.g, badge.tint.b, 0.6)
         }
         Rectangle {
+            id: fill
             x: badge.glyphX + 2.5
             y: badge.glyphTop + 2.5
             height: badge.bodyH - 5
             width: Math.max(2.5, (badge.bodyW - 5) * badge.pct / 100)
-            radius: 2.5
+            radius: badge.cornerR - 2
             color: badge.tint
             Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        }
+
+        // Number inside the glyph: light over the empty part, and a dark
+        // copy clipped to the fill on top of it.
+        Item {
+            visible: badge.inside
+            x: body.x
+            y: body.y
+            width: body.width
+            height: body.height
+            Text {
+                id: insideText
+                anchors.centerIn: parent
+                text: Math.round(badge.pct)
+                color: "#ffffff"
+                font.pixelSize: 12
+                font.weight: 700
+                font.family: Theme.fontText
+            }
+            Item {
+                x: fill.x - body.x
+                y: 0
+                width: fill.width
+                height: parent.height
+                clip: true
+                Text {
+                    x: insideText.x - parent.x
+                    y: insideText.y
+                    text: insideText.text
+                    color: "#000000"
+                    font: insideText.font
+                }
+            }
         }
     }
 

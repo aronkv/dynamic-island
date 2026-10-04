@@ -21,6 +21,8 @@ Item {
     // and whether it shows the percentage next to the glyph.
     property alias batteryBadge: adapter.batteryBadge
     property alias batteryBadgePercent: adapter.batteryBadgePercent
+    // Draw the percentage inside a larger battery glyph (iOS 16 style).
+    property alias batteryPercentInside: adapter.batteryPercentInside
     // Calculator: show the history column permanently (else via its button).
     property alias calcHistoryAlways: adapter.calcHistoryAlways
     // "Rain in ~15 min" alert in the island (WeatherMonitor minutely data).
@@ -101,6 +103,7 @@ Item {
             property bool autoLowPower: true
             property bool batteryBadge: true
             property bool batteryBadgePercent: true
+            property bool batteryPercentInside: false
             property bool calcHistoryAlways: false
             property bool rainAlert: true
             property bool reduceMotion: false

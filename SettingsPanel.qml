@@ -580,13 +580,20 @@ ColumnLayout {
                         onToggled: if (panel.store) panel.store.batteryBadge = !panel.store.batteryBadge
                     }
                     Separator {}
-                    Row {
-                        icon: "format-text-plaintext-symbolic"
-                        tint: Theme.green
-                        label: "Show percentage"
+                    SegRow {
+                        label: "Percentage"
                         opacity: panel.store && panel.store.batteryBadge ? 1 : 0.4
-                        checked: panel.store ? panel.store.batteryBadgePercent : false
-                        onToggled: if (panel.store) panel.store.batteryBadgePercent = !panel.store.batteryBadgePercent
+                        SegTrack {
+                            labels: ["Off", "Beside", "Inside"]
+                            values: ["off", "beside", "inside"]
+                            current: !panel.store || !panel.store.batteryBadgePercent ? "off"
+                                : panel.store.batteryPercentInside ? "inside" : "beside"
+                            onPicked: (v) => {
+                                if (!panel.store) return
+                                panel.store.batteryBadgePercent = v !== "off"
+                                panel.store.batteryPercentInside = v === "inside"
+                            }
+                        }
                     }
                 }
             }

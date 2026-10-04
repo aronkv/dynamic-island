@@ -3309,6 +3309,7 @@ PanelWindow {
             battery: batteryMonitor
             enabledSetting: settingsStore.batteryBadge
             showPercent: settingsStore.batteryBadgePercent
+            percentInside: settingsStore.batteryPercentInside
             lowPower: PowerProfiles.profile === PowerProfile.PowerSaver
             onClicked: {
                 island.closeAllPanels()
