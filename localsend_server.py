@@ -267,10 +267,21 @@ class Handler(BaseHTTPRequestHandler):
         files = {}
         for file_id, meta in files_in.items():
             file_name = meta.get("fileName") or file_id
+            # Which optional fields this sender fills in (for diagnosing the
+            # thumbnail): keys + preview length only, never the content.
+            try:
+                with open(os.path.expanduser("~/.cache/localsend_meta.log"), "a") as dbg:
+                    pv = meta.get("preview")
+                    dbg.write(json.dumps({"keys": sorted(meta.keys()), "fileType": meta.get("fileType"),
+                                          "previewLen": len(pv) if isinstance(pv, str) else None}) + "\n")
+            except Exception:
+                pass
             files[file_id] = {
                 "fileName": file_name,
                 "size": meta.get("size", 0),
                 "sha256": meta.get("sha256"),
+                "fileType": meta.get("fileType") or "",
+                "preview": meta.get("preview") if isinstance(meta.get("preview"), str) else "",
                 "token": str(uuid.uuid4()),
                 "dest": unique_dest_path(file_name),
                 "written": False,
@@ -292,7 +303,11 @@ class Handler(BaseHTTPRequestHandler):
             "alias": session["alias"],
             "deviceType": session.get("deviceType", "desktop"),
             "files": [
-                {"fileName": f["fileName"], "size": f["size"]}
+                # The optional LocalSend `preview` (a base64 / data-URL
+                # thumbnail, if the sender provides one) goes to the island so
+                # it can show the picture before Accept.
+                {"fileName": f["fileName"], "size": f["size"], "fileType": f["fileType"],
+                 "preview": f["preview"] if len(f["preview"]) < 400000 else ""}
                 for f in files.values()
             ],
         })

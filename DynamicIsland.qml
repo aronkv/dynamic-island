@@ -1512,7 +1512,7 @@ PanelWindow {
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
                 case "screenshot": return 150
-                case "localsend": return localSendMonitor.pendingIncoming !== null ? 172 : 190
+                case "localsend": return localSendMonitor.pendingIncoming !== null ? (incomingCard.previewSrc !== "" ? 192 : 172) : 190
                 default:
                     if (island.pillModeEffective === "strip" && !island.stripHovered) return 10
                     // Bumped from 36, explicit user request.
@@ -2346,10 +2346,19 @@ PanelWindow {
                     }
                 }
 
-                // File card.
+                // File card. A single image with a sender-supplied preview
+                // shows that thumbnail instead of the generic file icon.
+                readonly property string previewSrc: {
+                    if (files.length !== 1) return ""
+                    const f = files[0], p = f.preview || ""
+                    if (p === "") return ""
+                    if (p.startsWith("data:image")) return p
+                    if ((f.fileType || "").startsWith("image/")) return "data:" + f.fileType + ";base64," + p
+                    return ""
+                }
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 44
+                    implicitHeight: incomingCard.previewSrc !== "" ? 64 : 44
                     radius: 12
                     color: Theme.card
                     RowLayout {
@@ -2357,7 +2366,21 @@ PanelWindow {
                         anchors.leftMargin: 10
                         anchors.rightMargin: 12
                         spacing: 10
+                        ClippingRectangle {
+                            visible: incomingCard.previewSrc !== ""
+                            implicitWidth: 48
+                            implicitHeight: 48
+                            radius: 8
+                            color: Theme.cardElevated
+                            Image {
+                                anchors.fill: parent
+                                source: incomingCard.previewSrc
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+                        }
                         IconImage {
+                            visible: incomingCard.previewSrc === ""
                             implicitSize: 26
                             source: incomingCard.files.length > 0
                                 ? Quickshell.iconPath(incomingCard.files.length === 1 ? incomingCard.mimeIcon(incomingCard.files[0].fileName) : "folder", "text-x-generic")
