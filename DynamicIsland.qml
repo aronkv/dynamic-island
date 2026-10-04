@@ -1293,6 +1293,9 @@ PanelWindow {
         property bool idleArrived: false
         onSettledChanged: if (settled && island.displayState === "idle") idleArrived = true
         Component.onCompleted: idleArrived = settled && island.displayState === "idle"
+        // The plain idle pill's width ([cover] [clock] [cava]), used for
+        // the workspace dots whatever the now-playing mode shows.
+        readonly property real plainPillWidth: artSlot.implicitWidth * 2 + idleClock.implicitWidth + clockRow.spacing * 2 + 36
         readonly property real targetWidth: {
             switch (island.displayState) {
                 case "notification": return 380
@@ -1340,7 +1343,7 @@ PanelWindow {
                     // mode — a long lyric line or title used to stretch the
                     // dots across a wide pill, a short one squeezed them.
                     if (island.workspaceActive)
-                        return artSlot.implicitWidth * 2 + idleClock.implicitWidth + clockRow.spacing * 2 + 36
+                        return notch.plainPillWidth
                     // Strip mode keeps the island's own width (only the
                     // height collapses, see targetHeight).
                     return idleRow.implicitWidth + 36
@@ -2989,9 +2992,12 @@ PanelWindow {
 
         // Workspace dots, shown inside the idle pill (it keeps its size)
         // for a moment after a workspace switch, replacing the idle row.
+        // Fixed width (the plain pill's), centred — anchored to the notch's
+        // edges the dots slid and re-spaced while the notch sprang between
+        // the lyric line's width and the plain pill.
         WorkspaceOsd {
-            anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.plainPillWidth
             anchors.top: parent.top
             height: island.idleHeight
             z: 1
