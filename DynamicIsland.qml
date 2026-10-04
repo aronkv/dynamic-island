@@ -1569,15 +1569,15 @@ PanelWindow {
             width: notch.width - island.idleHeight
             height: island.idleHeight
             opacity: island.displayState === "idle" && island.idleMediaMode === "lyrics" && cavaMonitor.enabled
-                && (notch.settled || notch.idleArrived) ? 1 : 0
+                && !island.workspaceActive && (notch.settled || notch.idleArrived) ? 1 : 0
             visible: opacity > 0
             FadeBehavior on opacity {}
 
-            // Fixed bar size (4 px every 7 px): a short line shows fewer
-            // bars, a long one more, but every bar looks the same. The
-            // visible bars are the middle bands, centred in the pill.
-            readonly property int count: Math.max(0, Math.min(cavaMonitor.barCount, Math.floor(width / 7)))
-            readonly property int first: Math.floor((cavaMonitor.barCount - count) / 2)
+            // Fixed bar size (4 px every 7 px) across the whole pill: a
+            // short line shows fewer bars, a long one more, but every bar
+            // looks the same. The 20 bands are stretched over however many
+            // bars fit, so the spectrum always spans the full width.
+            readonly property int count: Math.max(0, Math.floor((width + 3) / 7))
             readonly property real barsX: (width - count * 7 + 3) / 2
             Repeater {
                 model: lyricsCava.count
@@ -1585,7 +1585,14 @@ PanelWindow {
                     required property int index
                     x: lyricsCava.barsX + index * 7
                     width: 4
-                    height: Math.max(2, (cavaMonitor.bars[lyricsCava.first + index] || 0) * lyricsCava.height * 0.8)
+                    // Interpolated between neighbouring bands, so a wide
+                    // pill shows a smooth spectrum, not blocky pairs.
+                    readonly property real t: index * (cavaMonitor.barCount - 1) / Math.max(1, lyricsCava.count - 1)
+                    readonly property real level: {
+                        const b = cavaMonitor.bars, i = Math.floor(t), f = t - i
+                        return (b[i] || 0) * (1 - f) + (b[Math.min(i + 1, cavaMonitor.barCount - 1)] || 0) * f
+                    }
+                    height: Math.max(2, level * lyricsCava.height * 0.8)
                     y: lyricsCava.height - height
                     radius: 2
                     color: Qt.rgba(island.artAccent.r, island.artAccent.g, island.artAccent.b, 0.35)
