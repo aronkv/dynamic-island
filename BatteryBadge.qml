@@ -83,16 +83,26 @@ Item {
         // ── Halo ──
         // Real soft shadows: RectangularShadow is a single shader item (no
         // offscreen layer, unlike MultiEffect's shadow, whose layer came
-        // back as a grey box after a fullscreen game). One hugs the glyph
-        // (body + nub), one sits behind the text as a soft pill.
+        // back as a grey box after a fullscreen game). The body and the nub
+        // get their own: one rect over both drew a full-height dark blob
+        // past the small nub on the right. One sits behind the text.
         RectangularShadow {
             x: badge.glyphX
             y: badge.glyphTop
-            width: badge.bodyW + 4
+            width: badge.bodyW
             height: badge.bodyH
             radius: badge.cornerR
-            blur: 7
-            color: Qt.rgba(0, 0, 0, 0.45)
+            blur: 5
+            color: Qt.rgba(0, 0, 0, 0.35)
+        }
+        RectangularShadow {
+            x: badge.glyphX + badge.bodyW + 1.2
+            y: badge.glyphTop + badge.bodyH / 2 - 3
+            width: 2.5
+            height: 6
+            radius: 1
+            blur: 3
+            color: Qt.rgba(0, 0, 0, 0.25)
         }
         RectangularShadow {
             visible: badge.label !== ""
@@ -101,8 +111,8 @@ Item {
             width: badge.textW + 4
             height: metrics.height - 4
             radius: height / 2
-            blur: 7
-            color: Qt.rgba(0, 0, 0, 0.5)
+            blur: 6
+            color: Qt.rgba(0, 0, 0, 0.35)
         }
 
         // Text beside the glyph.
