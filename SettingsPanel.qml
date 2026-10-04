@@ -579,9 +579,9 @@ ColumnLayout {
                         SegRow {
                             label: "Bitrate"
                             SegTrack {
-                                labels: ["8 Mbps", "15", "40", "Lossless"]
-                                values: [8000, 15000, 40000, 0]
-                                current: panel.store ? panel.store.recordBitrate : 0
+                                labels: ["20 Mbps", "40 Mbps", "80 Mbps · max"]
+                                values: [20000, 40000, 80000]
+                                current: panel.store ? panel.store.recordBitrate : 80000
                                 onPicked: (v) => { if (panel.store) panel.store.recordBitrate = v }
                             }
                         }
@@ -613,7 +613,7 @@ ColumnLayout {
                     Text {
                         Layout.fillWidth: true
                         Layout.leftMargin: 12
-                        text: "SUPER+R starts / stops · saved to ~/Videos/Recordings · changes apply to the next recording"
+                        text: "SUPER+R starts / stops · MP4 (H.264 + AAC, constant frame rate), plays everywhere · saved to ~/Videos/Recordings"
                         color: "#ffffff"
                         opacity: 0.35
                         font.pixelSize: 10

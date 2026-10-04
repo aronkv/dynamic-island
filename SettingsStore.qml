@@ -33,7 +33,7 @@ Item {
     // Screen recording (gpu-screen-recorder, read when a recording starts).
     property alias recordResolution: adapter.recordResolution   // "native" | "1080" | "720" | "480"
     property alias recordFps: adapter.recordFps                 // 30 | 60
-    property alias recordBitrate: adapter.recordBitrate         // kbps (constant bitrate), 0 = lossless
+    property alias recordBitrate: adapter.recordBitrate         // kbps, constant bitrate
     property alias recordSystemAudio: adapter.recordSystemAudio
     property alias recordMic: adapter.recordMic
     property alias recordCursor: adapter.recordCursor
@@ -110,7 +110,7 @@ Item {
             property bool nightLight: false
             property string recordResolution: "native"
             property int recordFps: 60
-            property int recordBitrate: 0
+            property int recordBitrate: 80000
             property bool recordSystemAudio: true
             property bool recordMic: false
             property bool recordCursor: true
