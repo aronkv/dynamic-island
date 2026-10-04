@@ -54,10 +54,17 @@ ColumnLayout {
     // Open/closed sections, by title. Missing = open.
     property var openSections: ({})
     function toggleSection(t) {
+        sectionAnim = true
+        sectionAnimOff.restart()
         const m = Object.assign({}, openSections)
         m[t] = !(m[t] !== false)
         openSections = m
     }
+    // Section heights animate only right after a header click — otherwise
+    // the Behavior also ran while the panel's layout first settled on open,
+    // and every section visibly grew into place.
+    property bool sectionAnim: false
+    Timer { id: sectionAnimOff; interval: 400; onTriggered: panel.sectionAnim = false }
 
     // A foldable section: tappable header (title + chevron) over its
     // content, whose height animates open/closed.
@@ -109,8 +116,8 @@ ColumnLayout {
             implicitHeight: sec.open ? inner.implicitHeight : 0
             clip: true
             opacity: sec.open ? 1 : 0
-            Behavior on implicitHeight { NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutCubic } }
-            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 180 } }
+            Behavior on implicitHeight { enabled: panel.sectionAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutCubic } }
+            Behavior on opacity { enabled: panel.sectionAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180 } }
             ColumnLayout {
                 id: inner
                 width: parent.width

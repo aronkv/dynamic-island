@@ -470,10 +470,17 @@ Item {
         }
     }
 
+    // Laid out at the settings view's final size (620×520 in
+    // DynamicIsland's notch sizes, minus the 14 px margins) instead of
+    // filling the springing notch: two columns reflowing on every frame of
+    // the open made everything inside slide around.
     ColumnLayout {
         id: settingsContent
-        anchors.fill: parent
-        anchors.margins: 14
+        anchors.top: parent.top
+        anchors.topMargin: 14
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: 620 - 28
+        height: 520 - 28
         spacing: 10
         opacity: panel.activeView === "settings" ? 1 : 0
         scale: panel.activeView === "settings" ? 1 : 0.97
