@@ -1225,8 +1225,11 @@ PanelWindow {
         Behavior on color { ColorAnimation { duration: 300 } }
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: 18
-        bottomRightRadius: 18
+        // The collapsed strip is only 16 px tall, so its corners take half
+        // its height (fully round ends) instead of the pill's 18 px.
+        readonly property real cornerRadius: Math.min(18, height / 2)
+        bottomLeftRadius: cornerRadius
+        bottomRightRadius: cornerRadius
 
         // Solid black body with a soft glass edge. With Liquid Glass on,
         // `notch` itself is only a translucent frosted fill
@@ -1425,7 +1428,7 @@ PanelWindow {
                 case "screenshot": return 150
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 172 : 190
                 default:
-                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 14
+                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 16
                     // Bumped from 36, explicit user request.
                     return island.idleHeight
             }
