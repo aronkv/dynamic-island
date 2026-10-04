@@ -991,7 +991,7 @@ PanelWindow {
     // badges: at 640 a long lyric line pushed the right-hand badges (mic,
     // screen share) past the surface edge and they were cut off. The input
     // mask still covers only what's drawn, so the extra width is inert.
-    implicitWidth: 960
+    implicitWidth: island.screen ? Math.max(960, island.screen.width) : 1920
     // 460, not 340 — the real bug behind "the panel's bottom never rounds"
     // (2026-09-19): several overview sub-panels need MORE height than this
     // fixed surface had (bluetooth: 440, theme: 460, settings: 400, all
@@ -1940,9 +1940,11 @@ PanelWindow {
                 Item {
                     id: lyricsBox
                     visible: island.idleMediaMode === "lyrics"
-                    // A long line doesn't scroll or shrink (user request): up
-                    // to 420 px at the normal 14 px, then it ends in "…".
-                    readonly property real maxW: 420
+                    // A line doesn't scroll or shrink and isn't capped (user
+                    // request): the pill grows to the whole line at 14 px. Only
+                    // a line that wouldn't fit on screen beside the badges
+                    // (~180 px each side) ends in "…".
+                    readonly property real maxW: island.width - 2 * 180 - 36
                     implicitWidth: Math.min(lyricMeasure.advanceWidth, maxW)
                     implicitHeight: 20
                     Layout.preferredWidth: implicitWidth
