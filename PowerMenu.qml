@@ -20,6 +20,9 @@ FocusScope {
 
     property int currentIndex: 0
     property int confirmIndex: -1
+    // Slot under the mouse (-1 = none). The highlight follows it, else the
+    // keyboard's currentIndex — one highlighted button at a time.
+    property int hoverIndex: -1
 
     readonly property var actions: [
         { key: "lock",     label: "Lock",      ask: "",           icon: "system-lock-screen-symbolic",     danger: false },
@@ -32,6 +35,7 @@ FocusScope {
 
     onActiveChanged: {
         confirmIndex = -1
+        hoverIndex = -1
         if (active) { currentIndex = 0; forceActiveFocus(); uptimeProc.running = true }
     }
 
@@ -135,9 +139,11 @@ FocusScope {
             }
         }
 
+        // Slots touch (spacing 0) so the cursor never crosses a dead gap
+        // between two buttons.
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 4
+            spacing: 0
 
             Repeater {
                 model: menu.actions
@@ -146,10 +152,10 @@ FocusScope {
                     id: slot
                     required property var modelData
                     required property int index
-                    readonly property bool focused: menu.currentIndex === index
+                    readonly property bool focused: menu.hoverIndex >= 0 ? menu.hoverIndex === index : menu.currentIndex === index
                     readonly property bool confirming: menu.confirmIndex === index
                     readonly property real pillWidth: askText.implicitWidth + 58
-                    Layout.preferredWidth: confirming ? pillWidth + 8 : (menu.confirmIndex >= 0 ? 60 : 66)
+                    Layout.preferredWidth: confirming ? pillWidth + 10 : (menu.confirmIndex >= 0 ? 62 : 70)
                     implicitHeight: 92
                     Behavior on Layout.preferredWidth { enabled: !Theme.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
 
@@ -159,7 +165,11 @@ FocusScope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onEntered: if (menu.confirmIndex === -1) menu.currentIndex = slot.index
+                        onEntered: {
+                            menu.hoverIndex = slot.index
+                            if (menu.confirmIndex === -1) menu.currentIndex = slot.index
+                        }
+                        onExited: if (menu.hoverIndex === slot.index) menu.hoverIndex = -1
                         onClicked: menu.activate(slot.index)
                     }
 
@@ -175,8 +185,10 @@ FocusScope {
                         color: slot.confirming ? Theme.red
                             : mouse.pressed ? Qt.rgba(1, 1, 1, 0.24)
                             : slot.focused ? Qt.rgba(1, 1, 1, 0.16) : Theme.card
+                        // Only the confirm pill's width animates; hover/focus
+                        // colours change instantly (animated ones crossed
+                        // mid-way while the cursor moved and read as flicker).
                         Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-                        Behavior on color { ColorAnimation { duration: 160 } }
 
                         Row {
                             anchors.centerIn: parent
@@ -239,7 +251,6 @@ FocusScope {
                             height: 18
                             radius: 9
                             color: slot.focused ? "#ffffff" : Theme.cardElevated
-                            Behavior on color { ColorAnimation { duration: 150 } }
                             Text {
                                 anchors.centerIn: parent
                                 text: slot.index + 1
@@ -258,7 +269,6 @@ FocusScope {
                         text: slot.confirming ? "Click again" : slot.modelData.label
                         color: slot.confirming ? Theme.red : "#ffffff"
                         opacity: slot.focused || slot.confirming ? 1 : 0.6
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
                         font.pixelSize: 11
                         font.weight: 600
                         font.family: Theme.fontText
