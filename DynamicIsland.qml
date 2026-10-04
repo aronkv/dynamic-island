@@ -2467,9 +2467,14 @@ PanelWindow {
             // card) it stays at full size — scaling with the notch there made
             // the slider shrink and pop back on the spring's undershoot.
             property bool growIn: true
+            // Its own state's size, read directly: notch.targetWidth follows
+            // morphState, which settles a tick later, so the callLater read
+            // still got the pill's size (40 px) and the slider showed up
+            // squeezed into a pill-sized box.
             onShownChanged: if (shown) {
                 growIn = notch.height < 64
-                Qt.callLater(() => { islandOsd.fixedW = notch.targetWidth; islandOsd.fixedH = notch.targetHeight })
+                fixedW = notch.widthFor(island.displayState)
+                fixedH = notch.heightFor(island.displayState)
             }
             width: fixedW
             height: fixedH
@@ -2480,7 +2485,9 @@ PanelWindow {
             scale: growIn ? Math.max(0.5, Math.min(1, notch.width / Math.max(1, fixedW), notch.height / Math.max(1, fixedH))) : 1
             transformOrigin: Item.Top          // the notch grows down from the top edge
             visible: opacity > 0
-            FadeBehavior on opacity {}
+            // OSDs answer a key press: fast in, fast out (the panels' slow
+            // fade-in left the slider grey and late).
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : islandOsd.shown ? 120 : 90; easing.type: Easing.OutCubic } }
         }
 
         IslandOsd {
