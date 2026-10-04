@@ -430,8 +430,8 @@ PanelWindow {
         }
         if (!island.overviewPanelOpen) island.closeAllPanels()
         island.mediaExpandedRequested = false
-        island.overviewPanelOpen = true
         quickOverviewPanel.activeView = view
+        island.overviewPanelOpen = true
     }
 
     function closeAllPanels() {
@@ -1073,8 +1073,8 @@ PanelWindow {
         }
         // Opens the Wi-Fi panel and toggles the password-share sheet (QR).
         function share(): void {
-            island.overviewPanelOpen = true
             quickOverviewPanel.activeView = "wifi"
+            island.overviewPanelOpen = true
             island.mediaExpandedRequested = false
             quickOverviewPanel.wifiShare()
         }
@@ -1100,15 +1100,15 @@ PanelWindow {
         }
         // Open the calculator with an expression typed in.
         function open(expr: string) {
-            island.overviewPanelOpen = true
             quickOverviewPanel.activeView = "calculator"
+            island.overviewPanelOpen = true
             island.mediaExpandedRequested = false
             quickOverviewPanel.calcSetExpression(expr)
         }
         // Open the calculator with its "what can I type" help sheet.
         function help() {
-            island.overviewPanelOpen = true
             quickOverviewPanel.activeView = "calculator"
+            island.overviewPanelOpen = true
             island.mediaExpandedRequested = false
             quickOverviewPanel.calcShowHelp()
         }
@@ -1131,7 +1131,7 @@ PanelWindow {
             island.weatherPreviewCode = code
             island.weatherPreviewDay = day
             island.closeAllPanels()
-            if (code >= 0) { island.overviewPanelOpen = true; quickOverviewPanel.activeView = "weather" }
+            if (code >= 0) { quickOverviewPanel.activeView = "weather"; island.overviewPanelOpen = true }
         }
     }
 
@@ -1174,8 +1174,8 @@ PanelWindow {
         // Open a specific overview sub-view ("wifi", "bluetooth", …).
         function open(view: string): void {
             island.closeAllPanels()
-            island.overviewPanelOpen = true
             quickOverviewPanel.activeView = view
+            island.overviewPanelOpen = true
         }
         function toggle() {
             if (island.mediaExpandedRequested || island.overviewPanelOpen) {
@@ -1183,8 +1183,8 @@ PanelWindow {
             } else if (mprisMonitor.anyPlayer !== null) {
                 island.mediaExpandedRequested = true
             } else {
-                island.overviewPanelOpen = true
                 quickOverviewPanel.activeView = "overview"
+                island.overviewPanelOpen = true
             }
         }
     }
@@ -2567,8 +2567,8 @@ PanelWindow {
                 // than remembered per-path round-tripping.
                 onNavigate: (target) => {
                     island.mediaExpandedRequested = false
-                    island.overviewPanelOpen = true
                     quickOverviewPanel.activeView = target
+                    island.overviewPanelOpen = true
                 }
             }
 
@@ -2718,8 +2718,8 @@ PanelWindow {
                                 anchors.fill: parent
                                 onClicked: {
                                     island.mediaExpandedRequested = false
-                                    island.overviewPanelOpen = true
                                     quickOverviewPanel.activeView = "overview"
+                                    island.overviewPanelOpen = true
                                 }
                             }
                         }
@@ -3306,8 +3306,8 @@ PanelWindow {
             lowPower: PowerProfiles.profile === PowerProfile.PowerSaver
             onClicked: {
                 island.closeAllPanels()
-                island.overviewPanelOpen = true
                 quickOverviewPanel.activeView = "battery"
+                island.overviewPanelOpen = true
             }
         }
 
@@ -3385,8 +3385,8 @@ PanelWindow {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    island.overviewPanelOpen = true
                     quickOverviewPanel.activeView = "tray"
+                    island.overviewPanelOpen = true
                 }
             }
         }
