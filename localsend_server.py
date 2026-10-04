@@ -44,6 +44,26 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+
+# Exit together with Quickshell. Restarting qs (reload.sh) left this
+# process running, reparented to init: an orphaned server kept TCP 53317,
+# so the new instance's own server couldn't start, and duplicate
+# discovery processes piled up. PR_SET_PDEATHSIG makes the kernel send
+# SIGTERM when the parent dies; the getppid() check covers a parent that
+# died before the call.
+def _die_with_parent():
+    try:
+        import ctypes
+        import signal
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    except Exception:
+        pass
+    if os.getppid() == 1:
+        sys.exit(0)
+
+
+_die_with_parent()
+
 PORT = 53317
 HOME = os.path.expanduser("~")
 CONFIG_DIR = os.path.join(HOME, ".config", "quickshell")
