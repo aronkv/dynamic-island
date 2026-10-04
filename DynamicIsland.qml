@@ -164,10 +164,24 @@ PanelWindow {
         id: capsLockMonitor
     }
 
+    // cava keeps running for a few seconds after playback pauses: stopping
+    // it at once cut the bars off instantly, and restarting it on resume
+    // made them come back late. Within the grace period the bars fall away
+    // naturally and resume immediately. appKeys follow anyPlayer, so a pause
+    // (activePlayer → null) doesn't restart cava on the default source.
+    property bool _cavaGrace: false
+    Timer { id: cavaGraceTimer; interval: 5000; onTriggered: island._cavaGrace = false }
+    Connections {
+        target: island
+        function onMediaPlayingChanged() {
+            if (island.mediaPlaying) { cavaGraceTimer.stop(); island._cavaGrace = false }
+            else { island._cavaGrace = true; cavaGraceTimer.restart() }
+        }
+    }
     CavaMonitor {
         id: cavaMonitor
-        enabled: mprisMonitor.anyPlayer !== null && mprisMonitor.anyPlayer.isPlaying
-        appKeys: mprisMonitor.appKeys(mprisMonitor.activePlayer)
+        enabled: mprisMonitor.anyPlayer !== null && (mprisMonitor.anyPlayer.isPlaying || island._cavaGrace)
+        appKeys: mprisMonitor.appKeys(mprisMonitor.anyPlayer)
     }
 
     ScreenshotMonitor {
@@ -496,9 +510,27 @@ PanelWindow {
     readonly property bool idleShowsCover: idleMediaMode === "art" || idleMediaMode === "title"
     // Paused in lyrics mode → the album-art look: a frozen line isn't worth
     // showing (user request).
-    readonly property string idleMediaMode: !hasAnyPlayer ? "none"
+    readonly property string _idleMediaModeTarget: !hasAnyPlayer ? "none"
         : settingsStore.idlePlayerMode === "lyrics" ? (!mediaPlaying ? "art" : idleLyricsSynced ? "lyrics" : "title")
         : settingsStore.idlePlayerMode === "title" ? "title" : "art"
+    // The layout actually shown. A change cross-fades: the pill content fades
+    // out (110 ms), the layout swaps (the notch then morphs to the new
+    // width), and the new content fades in — instead of the elements popping
+    // in and out at once (e.g. lyrics → album art on pause).
+    property string idleMediaMode: "none"
+    property real idleSwapOpacity: 1
+    on_IdleMediaModeTargetChanged: {
+        if (Theme.reduceMotion || island.displayState !== "idle") { idleSwap.stop(); idleSwapOpacity = 1; idleMediaMode = _idleMediaModeTarget }
+        else idleSwap.restart()
+    }
+    Component.onCompleted: idleMediaMode = _idleMediaModeTarget
+    SequentialAnimation {
+        id: idleSwap
+        NumberAnimation { target: island; property: "idleSwapOpacity"; to: 0; duration: 110; easing.type: Easing.InQuad }
+        ScriptAction { script: island.idleMediaMode = island._idleMediaModeTarget }
+        PauseAnimation { duration: 60 }
+        NumberAnimation { target: island; property: "idleSwapOpacity"; to: 1; duration: 240; easing.type: Easing.OutCubic }
+    }
     readonly property string idleLyricsText: {
         if (!idleLyricsSynced) return ""
         const lines = lyricsProvider.syncedLines
@@ -1707,9 +1739,9 @@ PanelWindow {
             height: island.idleHeight
             opacity: island.displayState === "idle" && island.idleMediaMode === "lyrics" && cavaMonitor.enabled
                 && !island.workspaceActive && !(island.pillModeEffective === "strip" && !island.stripHovered)
-                && (notch.settled || notch.idleArrived) ? 1 : 0
+                && (notch.settled || notch.idleArrived) ? island.idleSwapOpacity : 0
             visible: opacity > 0
-            FadeBehavior on opacity {}
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160; easing.type: Easing.OutCubic } }
 
             // Fixed bar size (4 px every 7 px) across the whole pill: a
             // short line shows fewer bars, a long one more, but every bar
@@ -1781,6 +1813,7 @@ PanelWindow {
             RowLayout {
                 id: clockRow
                 spacing: 12
+                opacity: island.idleSwapOpacity
 
                 // Live activity (timer / rain) — click expands. Recording and
                 // low battery have their own badges outside the pill.
