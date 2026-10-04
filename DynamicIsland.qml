@@ -439,6 +439,14 @@ PanelWindow {
     // Otherwise the pill falls back to the "title — artist" text.
     property int idleLyricsLineIndex: -1
     readonly property bool idleLyricsSynced: lyricsProvider.state === "synced"
+    // What the idle pill shows for media: "none" (no player — just the
+    // clock), "art" ([cover] [clock] [cava]), "title" ([cover] [title]
+    // [cava]) or "lyrics" (only the current line, over cover-tinted cava
+    // bars). Lyrics mode without synced lyrics falls back to "title".
+    readonly property bool idleShowsCover: idleMediaMode === "art" || idleMediaMode === "title"
+    readonly property string idleMediaMode: !hasAnyPlayer ? "none"
+        : settingsStore.idlePlayerMode === "lyrics" ? (idleLyricsSynced ? "lyrics" : "title")
+        : settingsStore.idlePlayerMode === "title" ? "title" : "art"
     readonly property string idleLyricsText: {
         if (!idleLyricsSynced) return ""
         const lines = lyricsProvider.syncedLines
@@ -1540,6 +1548,37 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
         }
 
+        // Lyrics mode background: the full 20-band cava spread across the
+        // pill behind the line, in the cover's colour. Inset by the pill's
+        // corner radius so no bar pokes out of the rounded ends; x comes
+        // from a fraction of the (springing) notch width — no anchors.fill
+        // on per-bar random values. No height Behavior (see barsArea).
+        Item {
+            id: lyricsCava
+            x: island.idleHeight / 2
+            y: 0
+            width: notch.width - island.idleHeight
+            height: island.idleHeight
+            opacity: island.displayState === "idle" && island.idleMediaMode === "lyrics" && cavaMonitor.enabled
+                && (notch.settled || notch.idleArrived) ? 1 : 0
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+
+            Repeater {
+                model: cavaMonitor.barCount
+                Rectangle {
+                    required property int index
+                    readonly property real slotW: lyricsCava.width / cavaMonitor.barCount
+                    x: index * slotW + slotW * 0.2
+                    width: slotW * 0.6
+                    height: Math.max(2, (cavaMonitor.bars[index] || 0) * lyricsCava.height * 0.8)
+                    y: lyricsCava.height - height
+                    radius: Math.min(width / 2, 3)
+                    color: Qt.rgba(island.artAccent.r, island.artAccent.g, island.artAccent.b, 0.35)
+                }
+            }
+        }
+
         RowLayout {
             id: idleRow
             // Pinned to a fixed point within the idle-height band, not centered
@@ -1596,6 +1635,7 @@ PanelWindow {
 
                 Item {
                     id: artSlot
+                    visible: island.idleMediaMode !== "lyrics"
                     implicitWidth: 28
                     implicitHeight: 28
 
@@ -1604,7 +1644,7 @@ PanelWindow {
                         anchors.fill: parent
                         radius: 8
                         color: "#1a1a1a"
-                        visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
+                        visible: island.idleShowsCover
                     }
 
                     // Rounded via the same recolor-pattern shape already used
@@ -1619,7 +1659,7 @@ PanelWindow {
                         anchors.fill: parent
                         fillMode: Image.PreserveAspectCrop
                         visible: false
-                        source: (island.hasAnyPlayer && settingsStore.idlePlayerMode === "art" && mprisMonitor.anyPlayer)
+                        source: (island.idleShowsCover && mprisMonitor.anyPlayer)
                             ? mprisMonitor.anyPlayer.trackArtUrl : ""
                     }
 
@@ -1640,7 +1680,7 @@ PanelWindow {
                         maskSpreadAtMin: 0.0
                         maskThresholdMax: 1.0
                         maskSpreadAtMax: 0.0
-                        visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
+                        visible: island.idleShowsCover
                     }
 
                     // No cover (e.g. a browser tab without the Plasma
@@ -1652,7 +1692,7 @@ PanelWindow {
                     IconImage {
                         anchors.centerIn: parent
                         implicitSize: 20
-                        visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "art"
+                        visible: island.idleShowsCover
                             && (!mprisMonitor.anyPlayer.trackArtUrl || artImage.status === Image.Error)
                         source: {
                             const p = mprisMonitor.anyPlayer
@@ -1663,7 +1703,25 @@ PanelWindow {
                     }
                 }
 
-                Clock {}
+                Clock { visible: island.idleMediaMode === "none" || island.idleMediaMode === "art" }
+
+                // Title mode: the track takes the clock's place, centred
+                // between the cover and the cava bars.
+                Text {
+                    visible: island.idleMediaMode === "title"
+                    text: {
+                        const p = mprisMonitor.anyPlayer
+                        if (!p) return ""
+                        return p.trackArtist ? (p.trackTitle + " — " + p.trackArtist) : p.trackTitle
+                    }
+                    color: "#ffffff"
+                    font.pixelSize: 13
+                    font.weight: 600
+                    font.family: "SF Pro Display"
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 240
+                }
 
                 // Right-side mirror of the art slot above — same fixed
                 // reserved size (not the old separate 44px circular badge)
@@ -1675,6 +1733,7 @@ PanelWindow {
                 // explicit user request — mic/camera badges stay in
                 // idleBadgeRight, only the bars moved.
                 Item {
+                    visible: island.idleMediaMode !== "lyrics"
                     implicitWidth: artSlot.implicitWidth
                     implicitHeight: artSlot.implicitHeight
 
@@ -1714,30 +1773,14 @@ PanelWindow {
                     }
                 }
 
-                Text {
-                    visible: island.hasAnyPlayer && (settingsStore.idlePlayerMode === "title"
-                        || (settingsStore.idlePlayerMode === "lyrics" && !island.idleLyricsSynced))
-                    text: {
-                        const p = mprisMonitor.anyPlayer
-                        if (!p) return ""
-                        return p.trackArtist ? (p.trackTitle + " — " + p.trackArtist) : p.trackTitle
-                    }
-                    color: "#ffffff"
-                    font.pixelSize: 13
-                    font.weight: 600
-                    font.family: "SF Pro Display"
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: 200
-                }
-
                 // Current synced line. The pill's width follows idleRow's
                 // implicitWidth (notch.targetWidth), so it springs to fit
                 // each line up to maxW; a longer line scrolls once (after a
                 // short pause) so its end is readable, then holds.
                 Item {
                     id: lyricsBox
-                    visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "lyrics" && island.idleLyricsSynced
-                    readonly property real maxW: 360
+                    visible: island.idleMediaMode === "lyrics"
+                    readonly property real maxW: 380
                     readonly property real overflow: Math.max(0, lyricLine.implicitWidth - maxW)
                     implicitWidth: Math.min(lyricLine.implicitWidth, maxW)
                     implicitHeight: lyricLine.implicitHeight
@@ -1748,7 +1791,8 @@ PanelWindow {
                         id: lyricLine
                         text: island.idleLyricsText
                         color: "#ffffff"
-                        font.pixelSize: 12
+                        font.pixelSize: 14
+                        font.weight: 600
                         font.family: "SF Pro Display"
                         onTextChanged: {
                             marquee.stop()
