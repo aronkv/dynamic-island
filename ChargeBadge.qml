@@ -85,19 +85,41 @@ Item {
             outlineWidth: modelData.w * 24 / 28   // path is scaled to 28 px
         }
     }
-    Repeater {
-        model: [{ k: 1.35, a: 0.18 }, { k: 1.22, a: 0.25 }, { k: 1.1, a: 0.35 }]
-        Item {
-            required property var modelData
-            anchors.fill: parent
-            PlugShape {
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: badge.shift
-                width: 26 * modelData.k
-                height: 26 * modelData.k
-                visible: !badge.charging
-                color: Qt.rgba(0, 0, 0, modelData.a)
+    // Same stroked-outline halo for the plug. Its three ShapePaths would
+    // overlap (and double the alpha where they meet), so the halo strokes
+    // one closed silhouette of the whole glyph instead — prongs, head and
+    // cable in a single path. Scaled-up copies (the old halo) gave an
+    // uneven, offset rim.
+    component PlugHalo: Shape {
+        id: halo
+        property color outline: "black"
+        property real outlineWidth: 2
+        readonly property real k: width / 24
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            fillColor: "transparent"
+            strokeColor: halo.outline
+            strokeWidth: halo.outlineWidth
+            joinStyle: ShapePath.RoundJoin
+            scale: Qt.size(halo.k, halo.k)
+            PathSvg {
+                path: "M 8.3 2.5 L 10.3 2.5 L 10.3 6.9 L 13.7 6.9 L 13.7 2.5 L 15.7 2.5 L 15.7 6.9 L 18.6 6.9 "
+                    + "L 18.6 12 Q 18.6 17.1 13.5 17.6 L 13.1 17.6 L 13.1 22 L 12.8 22.8 L 12 23.1 "
+                    + "L 11.2 22.8 L 10.9 22 L 10.9 17.6 L 10.5 17.6 Q 5.4 17.1 5.4 12 L 5.4 6.9 L 8.3 6.9 Z"
             }
+        }
+    }
+    Repeater {
+        model: [{ w: 12, a: 0.03 }, { w: 9, a: 0.04 }, { w: 6.5, a: 0.06 }, { w: 4, a: 0.08 }, { w: 2, a: 0.12 }]
+        PlugHalo {
+            required property var modelData
+            anchors.centerIn: parent
+            anchors.horizontalCenterOffset: badge.shift
+            width: 26
+            height: 26
+            visible: !badge.charging
+            outline: Qt.rgba(0, 0, 0, modelData.a)
+            outlineWidth: modelData.w * 24 / 26   // path is scaled to 26 px
         }
     }
 
