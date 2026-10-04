@@ -32,6 +32,7 @@ Item {
     // place: the sideways push made the incoming view look shifted and
     // clipped while the island was still resizing.
     function switchTo(view) {
+        Theme.switching = true
         slideEnabled = false
         activeView = view
         slideArm.restart()
@@ -301,7 +302,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
         IslandHeaderRow {
             Layout.fillWidth: true
@@ -407,7 +408,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         BatteryPanel {
@@ -436,7 +437,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         WifiPanel {
@@ -465,7 +466,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         BluetoothPanel {
@@ -501,7 +502,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         SettingsPanel {
@@ -530,7 +531,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         CalculatorPanel {
@@ -559,7 +560,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         CalendarPanel {
@@ -587,7 +588,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         WeatherPanel {
@@ -615,7 +616,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         ThemePanel {
@@ -645,7 +646,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         WallpaperPanel {
@@ -673,7 +674,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
 
         ShortcutsPanel {
@@ -701,7 +702,7 @@ Item {
         visible: opacity > 0
 
         FadeBehavior on opacity {}
-        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        ScaleBehavior on scale {}
 
         TrayPanel {
             id: trayPanel

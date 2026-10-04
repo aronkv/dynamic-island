@@ -428,13 +428,39 @@ PanelWindow {
             island.closeAllPanels()
             return
         }
-        const switching = island.overviewPanelOpen
-        if (!switching) island.closeAllPanels()
+        if (island.overviewPanelOpen) {
+            quickOverviewPanel.switchTo(view)
+            return
+        }
+        // From another panel (launcher, media card…) straight to the view:
+        // no closeAllPanels() first, which passed through "idle" and made
+        // the island start collapsing before growing again.
+        if (island.displayState !== "idle") Theme.switching = true
+        quickOverviewPanel.activeView = view
+        island.overviewPanelOpen = true        // also closes the exclusive panels
         island.mediaExpandedRequested = false
-        if (switching) quickOverviewPanel.switchTo(view)
-        else quickOverviewPanel.activeView = view
-        island.overviewPanelOpen = true
     }
+
+    // Exclusive panels (launcher, clipboard, notifications, activity,
+    // system, power): same key closes, another panel switches straight
+    // over — the new flag is raised before the others drop, so displayState
+    // never passes through "idle" (which morphed back toward the pill and
+    // then reopened: 503 → 355 → 463 px in a recording).
+    readonly property var _exclusiveFlags: ["powerMenuOpen", "launcherOpen", "clipboardOpen", "notificationsOpen", "activityOpen", "systemOpen"]
+    function toggleExclusive(flag) {
+        if (island[flag]) { island.closeAllPanels(); return }
+        if (island.displayState !== "idle") Theme.switching = true
+        island[flag] = true
+        for (const f of island._exclusiveFlags) if (f !== flag) island[f] = false
+        island.overviewPanelOpen = false
+        island.mediaExpandedRequested = false
+        island.localSendActive = false
+    }
+    Connections {
+        target: Theme
+        function onSwitchingChanged() { if (Theme.switching) switchingReset.restart() }
+    }
+    Timer { id: switchingReset; interval: 450; onTriggered: Theme.switching = false }
 
     function closeAllPanels() {
         island.mediaExpandedRequested = false
@@ -1007,27 +1033,21 @@ PanelWindow {
     IpcHandler {
         target: "clipboard"
         function toggle(): void {
-            const open = !island.clipboardOpen
-            island.closeAllPanels()
-            island.clipboardOpen = open
+            island.toggleExclusive("clipboardOpen")
         }
     }
 
     IpcHandler {
         target: "system"
         function toggle(): void {
-            const open = !island.systemOpen
-            island.closeAllPanels()
-            island.systemOpen = open
+            island.toggleExclusive("systemOpen")
         }
     }
 
     IpcHandler {
         target: "activity"
         function toggle(): void {
-            const open = !island.activityOpen
-            island.closeAllPanels()
-            island.activityOpen = open
+            island.toggleExclusive("activityOpen")
         }
         function record(): void { activityStore.toggleRecording() }
         // `qs ipc call activity timer 5m` — also "90s", "1h30m", "25", "1:30".
@@ -1044,27 +1064,21 @@ PanelWindow {
         target: "notifications"
         function clear(): void { notificationStore.clearAll() }
         function toggle(): void {
-            const open = !island.notificationsOpen
-            island.closeAllPanels()
-            island.notificationsOpen = open
+            island.toggleExclusive("notificationsOpen")
         }
     }
 
     IpcHandler {
         target: "launcher"
         function toggle(): void {
-            const open = !island.launcherOpen
-            island.closeAllPanels()
-            island.launcherOpen = open
+            island.toggleExclusive("launcherOpen")
         }
     }
 
     IpcHandler {
         target: "power"
         function toggle(): void {
-            const open = !island.powerMenuOpen
-            island.closeAllPanels()
-            island.powerMenuOpen = open
+            island.toggleExclusive("powerMenuOpen")
         }
     }
 
@@ -1296,7 +1310,10 @@ PanelWindow {
         readonly property bool stripCollapsed: island.pillModeEffective === "strip" && !island.stripHovered
         onStripCollapsedChanged: idleArrived = false
         onSettledChanged: if (settled && island.displayState === "idle") idleArrived = true
-        Component.onCompleted: idleArrived = settled && island.displayState === "idle"
+        Component.onCompleted: {
+            idleArrived = settled && island.displayState === "idle"
+            morphState = island.displayState
+        }
         // The plain idle pill's width ([cover] [clock] [cava]), used for
         // the workspace dots whatever the now-playing mode shows.
         readonly property real plainPillWidth: artSlot.implicitWidth * 2 + idleClock.implicitWidth + clockRow.spacing * 2 + 36
@@ -1307,7 +1324,10 @@ PanelWindow {
         // showed the panel two-thirds open (seen in a recording). Starting
         // the morph after that frame makes it grow smoothly from the pill.
         // Light states (OSDs, banners, collapsing) follow immediately.
-        property string morphState: island.displayState
+        // Plain value, set only by _setMorph — NOT bound to displayState: a
+        // live binding made it follow displayState instantly, so the start
+        // delay and the open/close/switch timings silently never applied.
+        property string morphState: "idle"
         readonly property var _heavyStates: ["overview", "mediaExpanded", "launcher", "clipboard", "notifications", "activity", "system", "power", "localsend"]
         readonly property var _osdStates: ["volume", "brightness", "capslock", "micmute"]
         // What kind of morph is about to run: "open" (pill → panel),
@@ -1331,14 +1351,18 @@ PanelWindow {
         }
         Connections {
             target: island
-            function onDisplayStateChanged() {
-                const st = island.displayState
-                if (notch._heavyStates.indexOf(st) !== -1 && notch.morphState === "idle" && !Theme.reduceMotion) {
-                    morphDelay.restart()
-                } else {
-                    morphDelay.stop()
-                    notch._setMorph(st)
-                }
+            // Coalesced: one user action can flip several flags in a row;
+            // only the final state of the tick should drive the morph.
+            function onDisplayStateChanged() { Qt.callLater(notch._onStateChanged) }
+        }
+        function _onStateChanged() {
+            const st = island.displayState
+            if (st === notch.morphState && !morphDelay.running) return
+            if (notch._heavyStates.indexOf(st) !== -1 && notch.morphState === "idle" && !Theme.reduceMotion) {
+                morphDelay.restart()
+            } else {
+                morphDelay.stop()
+                notch._setMorph(st)
             }
         }
         // A sub-view change inside the open overview (Settings → Battery)
