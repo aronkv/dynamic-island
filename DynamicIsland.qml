@@ -420,6 +420,20 @@ PanelWindow {
     // pill. Deliberately leaves notificationActive/volumeActive/
     // brightnessActive untouched — those are transient auto-shown overlays
     // with their own collapse timers, not "opened" state in the same sense.
+    // SUPER+<key> for an overview sub-view: pressing it while another panel
+    // is open switches straight to this view (the island stays open and
+    // morphs) instead of closing everything; only the same key again closes.
+    function toggleOverviewView(view) {
+        if (island.overviewPanelOpen && quickOverviewPanel.activeView === view) {
+            island.closeAllPanels()
+            return
+        }
+        if (!island.overviewPanelOpen) island.closeAllPanels()
+        island.mediaExpandedRequested = false
+        island.overviewPanelOpen = true
+        quickOverviewPanel.activeView = view
+    }
+
     function closeAllPanels() {
         island.mediaExpandedRequested = false
         island.overviewPanelOpen = false
@@ -960,15 +974,7 @@ PanelWindow {
     IpcHandler {
         target: "settings"
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "settings"
-            // Without this, opening the media card (now only reachable via
-            // bare SUPER or the idle-pill click, see the "overview" handler
-            // below — the separate "media" IpcHandler was removed) then
-            // SUPER+I then SUPER+I again (closing Settings) left
-            // mediaExpandedRequested still true, so the media card silently
-            // popped back up once Settings closed instead of returning to idle.
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("settings")
         }
     }
 
@@ -980,12 +986,7 @@ PanelWindow {
     IpcHandler {
         target: "calendar"
         function toggle(): void {
-            const open = !(island.overviewPanelOpen && quickOverviewPanel.activeView === "calendar")
-            island.closeAllPanels()
-            if (open) {
-                island.overviewPanelOpen = true
-                quickOverviewPanel.activeView = "calendar"
-            }
+            island.toggleOverviewView("calendar")
         }
     }
 
@@ -1056,9 +1057,7 @@ PanelWindow {
     IpcHandler {
         target: "wifi"
         function toggle(): void {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "wifi"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("wifi")
         }
         // Opens the Wi-Fi panel and toggles the password-share sheet (QR).
         function share(): void {
@@ -1078,18 +1077,14 @@ PanelWindow {
         function lowTest(level: int) { island.showLowBattery(level, true) }
         function lowDismiss() { island.lowBatteryActive = false }
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "battery"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("battery")
         }
     }
 
     IpcHandler {
         target: "calculator"
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "calculator"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("calculator")
         }
         // Open the calculator with an expression typed in.
         function open(expr: string) {
@@ -1110,21 +1105,14 @@ PanelWindow {
     IpcHandler {
         target: "tray"
         function toggle() {
-            const open = !(island.overviewPanelOpen && quickOverviewPanel.activeView === "tray")
-            island.closeAllPanels()
-            if (open) {
-                island.overviewPanelOpen = true
-                quickOverviewPanel.activeView = "tray"
-            }
+            island.toggleOverviewView("tray")
         }
     }
 
     IpcHandler {
         target: "weather"
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "weather"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("weather")
         }
         // Preview a weather scene: code = WMO code (-1 = live), day = true/false.
         function preview(code: int, day: bool): void {
@@ -1143,27 +1131,21 @@ PanelWindow {
             else themeProfiles.applyProfile(name)
         }
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "theme"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("theme")
         }
     }
 
     IpcHandler {
         target: "wallpaper"
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "wallpaper"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("wallpaper")
         }
     }
 
     IpcHandler {
         target: "shortcuts"
         function toggle() {
-            island.overviewPanelOpen = !island.overviewPanelOpen
-            if (island.overviewPanelOpen) quickOverviewPanel.activeView = "shortcuts"
-            island.mediaExpandedRequested = false
+            island.toggleOverviewView("shortcuts")
         }
     }
 
