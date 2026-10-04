@@ -1564,16 +1564,21 @@ PanelWindow {
             visible: opacity > 0
             FadeBehavior on opacity {}
 
+            // Fixed bar size (4 px every 7 px): a short line shows fewer
+            // bars, a long one more, but every bar looks the same. The
+            // visible bars are the middle bands, centred in the pill.
+            readonly property int count: Math.max(0, Math.min(cavaMonitor.barCount, Math.floor(width / 7)))
+            readonly property int first: Math.floor((cavaMonitor.barCount - count) / 2)
+            readonly property real barsX: (width - count * 7 + 3) / 2
             Repeater {
-                model: cavaMonitor.barCount
+                model: lyricsCava.count
                 Rectangle {
                     required property int index
-                    readonly property real slotW: lyricsCava.width / cavaMonitor.barCount
-                    x: index * slotW + slotW * 0.2
-                    width: slotW * 0.6
-                    height: Math.max(2, (cavaMonitor.bars[index] || 0) * lyricsCava.height * 0.8)
+                    x: lyricsCava.barsX + index * 7
+                    width: 4
+                    height: Math.max(2, (cavaMonitor.bars[lyricsCava.first + index] || 0) * lyricsCava.height * 0.8)
                     y: lyricsCava.height - height
-                    radius: Math.min(width / 2, 3)
+                    radius: 2
                     color: Qt.rgba(island.artAccent.r, island.artAccent.g, island.artAccent.b, 0.35)
                 }
             }
