@@ -1344,8 +1344,12 @@ PanelWindow {
                     // dots across a wide pill, a short one squeezed them.
                     if (island.workspaceActive)
                         return notch.plainPillWidth
-                    // Strip mode keeps the island's own width (only the
-                    // height collapses, see targetHeight).
+                    // The collapsed strip has the plain pill's fixed width,
+                    // independent of what now-playing shows — following a
+                    // lyric line it resized on every line. Hovering it
+                    // reveals the real pill at its content width.
+                    if (island.pillModeEffective === "strip" && !island.stripHovered)
+                        return notch.plainPillWidth
                     return idleRow.implicitWidth + 36
             }
         }
@@ -1569,7 +1573,8 @@ PanelWindow {
             width: notch.width - island.idleHeight
             height: island.idleHeight
             opacity: island.displayState === "idle" && island.idleMediaMode === "lyrics" && cavaMonitor.enabled
-                && !island.workspaceActive && (notch.settled || notch.idleArrived) ? 1 : 0
+                && !island.workspaceActive && !(island.pillModeEffective === "strip" && !island.stripHovered)
+                && (notch.settled || notch.idleArrived) ? 1 : 0
             visible: opacity > 0
             FadeBehavior on opacity {}
 
