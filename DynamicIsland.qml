@@ -1318,7 +1318,7 @@ PanelWindow {
                 case "brightness": return 300
                 case "charging": return 240
                 case "lowbattery": return 430
-                case "power": return 480
+                case "power": return 520
                 case "launcher": return 540
                 case "notifications": return 460
                 case "activity": return 460

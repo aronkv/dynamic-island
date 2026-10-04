@@ -4,14 +4,14 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
-import QtQuick.Shapes
 
 // Power menu (displayState "power"): 1 Lock · 2 Sleep · 3 Log Out ·
-// 4 Restart · 5 Shut Down · 6 Restart to BIOS (firmware setup). Nothing runs on a tap: hold the number key (or
-// press-and-hold the button, or hold Enter on the selected one) and a ring
-// fills around it; when it completes (~0.9 s) the action runs. Letting go
-// early cancels and the ring drains back.
-// Keyboard: 1–6 hold, ←/→ select, Enter hold, Esc closes.
+// 4 Restart · 5 Shut Down · 6 BIOS (restart into firmware setup).
+// Click + confirm: Lock and Sleep run on one click. A dangerous action's
+// first click opens its button into a red "Restart?" pill; a second
+// click (or Enter, or the same number) runs it. Anything else — another
+// button, an arrow key, Esc, or 3 s without input — folds it back.
+// Keyboard: 1–6 / Enter activate, ←/→ select, Esc cancels then closes.
 FocusScope {
     id: menu
     property bool active: false
@@ -19,65 +19,42 @@ FocusScope {
     signal lockRequested()
 
     property int currentIndex: 0
-    property int holdIndex: -1
-    property real holdProgress: 0
-    readonly property int holdDuration: 900
+    property int confirmIndex: -1
 
     readonly property var actions: [
-        { key: "lock",     label: "Lock",      icon: "system-lock-screen-symbolic",  danger: false },
-        { key: "sleep",    label: "Sleep",     icon: "weather-clear-night-symbolic", danger: false },
-        { key: "logout",   label: "Log Out",   icon: "system-log-out-symbolic",      danger: true },
-        { key: "reboot",   label: "Restart",   icon: "system-reboot-symbolic",       danger: true },
-        { key: "poweroff", label: "Shut Down", icon: "system-shutdown-symbolic",     danger: true },
-        { key: "bios",     label: "BIOS",      icon: "application-x-firmware-symbolic", danger: true }
+        { key: "lock",     label: "Lock",      ask: "",           icon: "system-lock-screen-symbolic",     danger: false },
+        { key: "sleep",    label: "Sleep",     ask: "",           icon: "weather-clear-night-symbolic",    danger: false },
+        { key: "logout",   label: "Log Out",   ask: "Log Out?",   icon: "system-log-out-symbolic",         danger: true },
+        { key: "reboot",   label: "Restart",   ask: "Restart?",   icon: "system-reboot-symbolic",          danger: true },
+        { key: "poweroff", label: "Shut Down", ask: "Shut Down?", icon: "system-shutdown-symbolic",        danger: true },
+        { key: "bios",     label: "BIOS",      ask: "BIOS?", icon: "application-x-firmware-symbolic", danger: true }
     ]
 
     onActiveChanged: {
-        cancelHold()
+        confirmIndex = -1
         if (active) { currentIndex = 0; forceActiveFocus(); uptimeProc.running = true }
     }
 
-    function startHold(i) {
-        if (holdIndex === i) return
+    function activate(i) {
         currentIndex = i
-        holdIndex = i
-        drain.stop()
-        fill.from = holdProgress
-        fill.duration = holdDuration * (1 - holdProgress)
-        fill.restart()
+        const a = actions[i]
+        if (!a.danger || confirmIndex === i) { run(a.key); return }
+        confirmIndex = i
+        confirmTimer.restart()
     }
-    function endHold(i) {
-        if (holdIndex !== i) return
-        if (holdProgress >= 1) return
-        cancelHold()
-    }
-    function cancelHold() {
-        fill.stop()
-        holdIndex = -1
-        drain.from = holdProgress
-        drain.restart()
+    function cancelConfirm() {
+        confirmIndex = -1
+        confirmTimer.stop()
     }
 
-    NumberAnimation {
-        id: fill
-        target: menu
-        property: "holdProgress"
-        to: 1
-        easing.type: Easing.Linear
-        onFinished: if (menu.holdIndex >= 0 && menu.holdProgress >= 1) menu.run(menu.actions[menu.holdIndex].key)
-    }
-    NumberAnimation {
-        id: drain
-        target: menu
-        property: "holdProgress"
-        to: 0
-        duration: 220
-        easing.type: Easing.OutCubic
+    Timer {
+        id: confirmTimer
+        interval: 3000
+        onTriggered: menu.confirmIndex = -1
     }
 
     function run(key) {
-        holdIndex = -1
-        holdProgress = 0
+        cancelConfirm()
         menu.closeRequested()
         if (key === "lock") { menu.lockRequested(); return }
         // Lock first, then suspend a moment later, so the machine never
@@ -122,17 +99,15 @@ FocusScope {
     Keys.onPressed: (event) => {
         if (event.isAutoRepeat) { event.accepted = true; return }
         const n = event.key - Qt.Key_1
-        if (n >= 0 && n < actions.length) { startHold(n); event.accepted = true; return }
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { startHold(currentIndex); event.accepted = true; return }
-        if (event.key === Qt.Key_Left) { cancelHold(); currentIndex = Math.max(0, currentIndex - 1); event.accepted = true }
-        else if (event.key === Qt.Key_Right) { cancelHold(); currentIndex = Math.min(actions.length - 1, currentIndex + 1); event.accepted = true }
-        else if (event.key === Qt.Key_Escape) { menu.closeRequested(); event.accepted = true }
-    }
-    Keys.onReleased: (event) => {
-        if (event.isAutoRepeat) { event.accepted = true; return }
-        const n = event.key - Qt.Key_1
-        if (n >= 0 && n < actions.length) { endHold(n); event.accepted = true; return }
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { endHold(currentIndex); event.accepted = true }
+        if (n >= 0 && n < actions.length) { activate(n); event.accepted = true; return }
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activate(currentIndex); event.accepted = true; return }
+        if (event.key === Qt.Key_Left) { cancelConfirm(); currentIndex = Math.max(0, currentIndex - 1); event.accepted = true }
+        else if (event.key === Qt.Key_Right) { cancelConfirm(); currentIndex = Math.min(actions.length - 1, currentIndex + 1); event.accepted = true }
+        else if (event.key === Qt.Key_Escape) {
+            if (confirmIndex >= 0) cancelConfirm()
+            else menu.closeRequested()
+            event.accepted = true
+        }
     }
 
     ColumnLayout {
@@ -161,8 +136,8 @@ FocusScope {
         }
 
         RowLayout {
-            Layout.fillWidth: true
-            spacing: 0
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 4
 
             Repeater {
                 model: menu.actions
@@ -172,111 +147,86 @@ FocusScope {
                     required property var modelData
                     required property int index
                     readonly property bool focused: menu.currentIndex === index
-                    readonly property bool holding: menu.holdIndex === index
-                    readonly property real progress: holding || (menu.holdIndex === -1 && menu.currentIndex === index) ? menu.holdProgress : 0
-                    readonly property color tint: modelData.danger ? Theme.red : "#ffffff"
-                    Layout.fillWidth: true
+                    readonly property bool confirming: menu.confirmIndex === index
+                    readonly property real pillWidth: askText.implicitWidth + 58
+                    Layout.preferredWidth: confirming ? pillWidth + 8 : (menu.confirmIndex >= 0 ? 60 : 66)
                     implicitHeight: 92
+                    Behavior on Layout.preferredWidth { enabled: !Theme.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
 
-                    // Hover/press live on the whole slot, NOT inside `btn`:
-                    // btn scales on focus, and a MouseArea inside a scaling
-                    // item grows/shrinks its own hit area, so at the edge
-                    // entered/exited fired back and forth (the flicker).
+                    // On the whole (unscaled) slot, so hover never flickers.
                     MouseArea {
+                        id: mouse
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onEntered: if (menu.holdIndex === -1) menu.currentIndex = slot.index
-                        onPressed: menu.startHold(slot.index)
-                        onReleased: menu.endHold(slot.index)
-                        onCanceled: menu.endHold(slot.index)
-                        onExited: if (pressed) menu.endHold(slot.index)
+                        onEntered: if (menu.confirmIndex === -1) menu.currentIndex = slot.index
+                        onClicked: menu.activate(slot.index)
                     }
 
-                    Item {
+                    // The button: a circle that opens into a red pill while
+                    // asking for confirmation.
+                    Rectangle {
                         id: btn
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 2
-                        width: 58
+                        width: slot.confirming ? slot.pillWidth : 58
                         height: 58
-                        scale: slot.holding ? 0.92 + 0.08 * (1 - slot.progress) : (slot.focused ? 1.04 : 1)
-                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                        radius: 29
+                        color: slot.confirming ? Theme.red
+                            : mouse.pressed ? Qt.rgba(1, 1, 1, 0.24)
+                            : slot.focused ? Qt.rgba(1, 1, 1, 0.16) : Theme.card
+                        Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation { duration: 160 } }
 
-                        // Soft focus ring around the selected button.
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            radius: width / 2
-                            color: "transparent"
-                            border.width: 1.5
-                            border.color: Qt.rgba(1, 1, 1, 0.35)
-                            opacity: slot.focused && slot.progress === 0 ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160 } }
-                        }
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: width / 2
-                            color: slot.focused ? Qt.rgba(1, 1, 1, 0.16) : Theme.card
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-                        // Fill that rises with the hold progress.
-                        Rectangle {
+                        Row {
                             anchors.centerIn: parent
-                            width: parent.width * slot.progress
-                            height: width
-                            radius: width / 2
-                            color: slot.tint
-                            opacity: 0.9
-                        }
+                            spacing: 8
 
-                        // Progress ring.
-                        Shape {
-                            anchors.fill: parent
-                            anchors.margins: -5
-                            visible: slot.progress > 0
-                            preferredRendererType: Shape.CurveRenderer
-                            ShapePath {
-                                strokeWidth: 3
-                                strokeColor: slot.tint
-                                fillColor: "transparent"
-                                capStyle: ShapePath.RoundCap
-                                PathAngleArc {
-                                    centerX: 34
-                                    centerY: 34
-                                    radiusX: 32.5
-                                    radiusY: 32.5
-                                    startAngle: -90
-                                    sweepAngle: 360 * slot.progress
+                            Item {
+                                width: 22
+                                height: 22
+                                anchors.verticalCenter: parent.verticalCenter
+                                IconImage {
+                                    id: icon
+                                    anchors.fill: parent
+                                    implicitSize: 22
+                                    source: "image://icon/" + slot.modelData.icon
+                                    visible: false
+                                    layer.enabled: true
+                                    smooth: true
+                                    mipmap: true
+                                }
+                                Rectangle {
+                                    id: iconFill
+                                    anchors.fill: icon
+                                    color: "#ffffff"
+                                    visible: false
+                                }
+                                MultiEffect {
+                                    anchors.fill: icon
+                                    source: iconFill
+                                    maskEnabled: true
+                                    maskSource: icon
+                                    maskThresholdMin: 0.5
+                                    maskSpreadAtMin: 0.0
+                                    maskThresholdMax: 1.0
+                                    maskSpreadAtMax: 0.0
                                 }
                             }
-                        }
 
-                        IconImage {
-                            id: icon
-                            anchors.centerIn: parent
-                            implicitSize: 22
-                            source: "image://icon/" + slot.modelData.icon
-                            visible: false
-                            layer.enabled: true
-                            smooth: true
-                            mipmap: true
-                        }
-                        Rectangle {
-                            id: iconFill
-                            anchors.fill: icon
-                            color: slot.progress > 0.5 && !slot.modelData.danger ? "#000000" : "#ffffff"
-                            visible: false
-                        }
-                        MultiEffect {
-                            anchors.fill: icon
-                            source: iconFill
-                            maskEnabled: true
-                            maskSource: icon
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 0.0
-                            maskThresholdMax: 1.0
-                            maskSpreadAtMax: 0.0
+                            Text {
+                                id: askText
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: slot.modelData.ask
+                                visible: opacity > 0
+                                opacity: slot.confirming ? 1 : 0
+                                width: slot.confirming ? implicitWidth : 0
+                                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 180 } }
+                                color: "#ffffff"
+                                font.pixelSize: 13
+                                font.weight: 700
+                                font.family: Theme.fontText
+                            }
                         }
 
                         // Number badge.
@@ -294,7 +244,6 @@ FocusScope {
                                 anchors.centerIn: parent
                                 text: slot.index + 1
                                 color: slot.focused ? "#000000" : "#ffffff"
-                                Behavior on color { ColorAnimation { duration: 150 } }
                                 font.pixelSize: 10
                                 font.weight: 700
                                 font.family: Theme.fontText
@@ -302,33 +251,17 @@ FocusScope {
                         }
                     }
 
-                    // Label cross-fades to "Hold…" while holding.
-                    Item {
+                    Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: btn.bottom
                         anchors.topMargin: 10
-                        width: parent.width
-                        height: 14
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: slot.modelData.label
-                            color: "#ffffff"
-                            opacity: slot.holding ? 0 : (slot.focused ? 1 : 0.6)
-                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 150 } }
-                            font.pixelSize: 11
-                            font.weight: 600
-                            font.family: Theme.fontText
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "Hold…"
-                            color: slot.modelData.danger ? Theme.red : "#ffffff"
-                            opacity: slot.holding ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 150 } }
-                            font.pixelSize: 11
-                            font.weight: 600
-                            font.family: Theme.fontText
-                        }
+                        text: slot.confirming ? "Click again" : slot.modelData.label
+                        color: slot.confirming ? Theme.red : "#ffffff"
+                        opacity: slot.focused || slot.confirming ? 1 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        font.pixelSize: 11
+                        font.weight: 600
+                        font.family: Theme.fontText
                     }
                 }
             }
@@ -336,7 +269,7 @@ FocusScope {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "Hold 1–6 (or press and hold a button) to confirm"
+            text: "Click or press 1–6 · Log Out, Restart, Shut Down and BIOS ask again"
             color: "#ffffff"
             opacity: 0.35
             font.pixelSize: 10
