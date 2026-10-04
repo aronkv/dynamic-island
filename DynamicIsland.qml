@@ -494,8 +494,10 @@ PanelWindow {
     // [cava]) or "lyrics" (only the current line, over cover-tinted cava
     // bars). Lyrics mode without synced lyrics falls back to "title".
     readonly property bool idleShowsCover: idleMediaMode === "art" || idleMediaMode === "title"
+    // Paused in lyrics mode → the album-art look: a frozen line isn't worth
+    // showing (user request).
     readonly property string idleMediaMode: !hasAnyPlayer ? "none"
-        : settingsStore.idlePlayerMode === "lyrics" ? (idleLyricsSynced ? "lyrics" : "title")
+        : settingsStore.idlePlayerMode === "lyrics" ? (!mediaPlaying ? "art" : idleLyricsSynced ? "lyrics" : "title")
         : settingsStore.idlePlayerMode === "title" ? "title" : "art"
     readonly property string idleLyricsText: {
         if (!idleLyricsSynced) return ""
@@ -1902,7 +1904,9 @@ PanelWindow {
                         anchors.centerIn: parent
                         width: cavaMonitor.pillCount * 5 - 2
                         height: 20
-                        opacity: cavaMonitor.enabled ? 1 : 0
+                        // Shown whenever a player exists: while nothing plays
+                        // the bars rest as small dots in the cover's colour.
+                        opacity: island.hasAnyPlayer ? 1 : 0
                         visible: opacity > 0
 
                         FadeBehavior on opacity {}
@@ -1913,8 +1917,8 @@ PanelWindow {
                             Rectangle {
                                 required property int index
                                 width: 3
-                                radius: 1
-                                height: Math.max(3, (cavaMonitor.pillBars[index] !== undefined ? cavaMonitor.pillBars[index] : 0) * barsArea.height)
+                                radius: 1.5
+                                height: Math.max(3, (cavaMonitor.enabled && cavaMonitor.pillBars[index] !== undefined ? cavaMonitor.pillBars[index] : 0) * barsArea.height)
                                 x: index * 5
                                 y: barsArea.height - height
                                 // Album-cover color while playing (theme
