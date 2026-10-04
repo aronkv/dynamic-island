@@ -9,6 +9,7 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 
 PanelWindow {
     id: island
@@ -3190,60 +3191,44 @@ PanelWindow {
     // notch's live position through every displayState resize animation
     // without needing to redraw every frame — notch's y is always 0
     // (top-anchored) for every state, so no y binding is needed.
-    component NotchEar: Canvas {
+    component NotchEar: Shape {
         id: ear
         property bool rightSide: false
         anchors.top: notch.top
         // Clamped to notch's own live height: at every normal displayState
         // notch.height is well above 10, so this is a no-op (width/height
         // stay 10 exactly as before). Strip mode shrinks notch down to a
-        // few px, and this Canvas used to stay a fixed 10x10 regardless —
-        // the flare then stuck out past notch's own bottom edge, reading as
-        // an oversized, disconnected curve next to the thin strip bar.
+        // few px, and the ear used to stay a fixed 10x10 regardless — the
+        // flare then stuck out past notch's own bottom edge, reading as an
+        // oversized, disconnected curve next to the thin strip bar.
         width: Math.min(10, notch.height)
         height: Math.min(10, notch.height)
-
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        Connections {
-            target: island
-            function onSurfaceColorChanged() { ear.requestPaint() }
-            function onGlassRimChanged() { ear.requestPaint() }
-        }
-
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.reset()
+        // A vector Shape, not a Canvas: the Canvas version (black square
+        // minus a destination-out quarter circle) left a light fringe along
+        // its anti-aliased edges, plainly visible as light triangles at the
+        // strip's corners over a dark fullscreen app (found frame by frame
+        // in a screen recording).
+        preferredRendererType: Shape.CurveRenderer
+        // The sliver between the screen's top edge, notch's side and a
+        // quarter circle centred on the far bottom corner (radius = the
+        // ear's size), so its curve runs tangent into both edges.
+        ShapePath {
             // Glass mode: same translucency as the notch's outer rim
-            // (surface 0.25 + first ring 0.3 ≈ 0.47), so the flare reads as
-            // part of the frosted edge.
-            ctx.fillStyle = island.glassRim > 0 ? "rgba(0,0,0,0.47)" : "#000000"
-            ctx.fillRect(0, 0, width, height)
-            ctx.globalCompositeOperation = "destination-out"
-            // The erase uses the fill's alpha: it must be fully opaque, or a
-            // translucent fill only partially erases the curve (the ears
-            // showed up as frosted squares under glass).
-            ctx.fillStyle = "#000000"
-            ctx.beginPath()
-            // Erase a quarter-circle centered on the FAR corner (diagonally
-            // opposite the corner touching notch + the screen's top edge),
-            // not the near corner — erasing from the near corner (as this
-            // was originally written) carves away exactly the material that
-            // should flare into notch, leaving a disconnected black wedge
-            // floating in the far corner instead of a smooth join. With the
-            // erase centered on the far corner and radius == the ear's own
-            // size, the arc passes exactly through the two other corners
-            // and never reaches the near corner, so a thin curved sliver
-            // hugging notch's edge and the top screen edge survives.
-            const cx = rightSide ? width : 0
-            const cy = height
-            ctx.moveTo(cx, cy)
-            ctx.arc(cx, cy, width, rightSide ? Math.PI : 1.5 * Math.PI, rightSide ? 1.5 * Math.PI : 2 * Math.PI)
-            ctx.closePath()
-            ctx.fill()
+            // (surface 0.25 + first ring 0.3 ≈ 0.47).
+            fillColor: island.glassRim > 0 ? Qt.rgba(0, 0, 0, 0.47) : "#000000"
+            strokeColor: "transparent"
+            startX: ear.rightSide ? ear.width : 0
+            startY: 0
+            PathLine { x: ear.rightSide ? 0 : ear.width; y: 0 }
+            PathLine { x: ear.rightSide ? 0 : ear.width; y: ear.height }
+            PathArc {
+                x: ear.rightSide ? ear.width : 0
+                y: 0
+                radiusX: ear.width
+                radiusY: ear.height
+                direction: ear.rightSide ? PathArc.Clockwise : PathArc.Counterclockwise
+            }
         }
-
-        Component.onCompleted: requestPaint()
     }
 
     NotchEar {
