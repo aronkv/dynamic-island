@@ -803,6 +803,33 @@ ColumnLayout {
                                 onColor: panel.current ? "#000000" : "#ffffff"
                                 offColor: panel.current ? Qt.rgba(0, 0, 0, 0.25) : Qt.rgba(1, 1, 1, 0.25)
                             }
+                            // Wi-Fi generation ("5", "6", "6E", "7") of the
+                            // live link, from `iw dev … link` (wifi_details.py).
+                            Rectangle {
+                                readonly property var conn: panel.current && panel.monitor && panel.monitor.wifiDetails
+                                    ? panel.monitor.wifiDetails["_connection"] : null
+                                readonly property string gen: conn && conn.generation ? conn.generation : ""
+                                visible: gen !== ""
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.rightMargin: -4
+                                anchors.bottomMargin: -3
+                                width: Math.max(17, genText.implicitWidth + 8)
+                                height: 17
+                                radius: 8.5
+                                color: "#000000"
+                                border.width: 1.5
+                                border.color: "#ffffff"
+                                Text {
+                                    id: genText
+                                    anchors.centerIn: parent
+                                    text: parent.gen
+                                    color: "#ffffff"
+                                    font.pixelSize: 9
+                                    font.weight: 700
+                                    font.family: Theme.fontText
+                                }
+                            }
                         }
                         Column {
                             anchors.left: heroBadge.right

@@ -107,18 +107,25 @@ def get_connection_details():
     # VHT = 802.11ac/Wi-Fi 5, plain MCS = 802.11n/Wi-Fi 4), which is the
     # same signal Android's own "Wi-Fi 6" label is built from. Nothing in
     # nmcli reports this at all.
-    technology = "Wi-Fi"
+    # EHT = 802.11be/Wi-Fi 7; HE on 6 GHz (freq >= 5925 MHz) = Wi-Fi 6E.
+    # "generation" is the short form for the panel's icon badge.
+    technology, generation = "Wi-Fi", ""
     try:
         link_out = subprocess.run(
             ["iw", "dev", device, "link"],
             capture_output=True, text=True, timeout=3,
         ).stdout
-        if "HE-MCS" in link_out:
-            technology = "Wi-Fi 6"
+        freq_m = re.search(r"freq:\s*(\d+)", link_out)
+        freq = float(freq_m.group(1)) if freq_m else 0
+        if "EHT-MCS" in link_out:
+            technology, generation = "Wi-Fi 7 (802.11be)", "7"
+        elif "HE-MCS" in link_out:
+            generation = "6E" if freq >= 5925 else "6"
+            technology = "Wi-Fi " + generation + " (802.11ax)"
         elif "VHT-MCS" in link_out:
-            technology = "Wi-Fi 5"
+            technology, generation = "Wi-Fi 5 (802.11ac)", "5"
         elif "MCS" in link_out:
-            technology = "Wi-Fi 4"
+            technology, generation = "Wi-Fi 4 (802.11n)", "4"
     except Exception:
         pass
 
@@ -135,6 +142,7 @@ def get_connection_details():
 
     return {
         "technology": technology,
+        "generation": generation,
         "ip": ip,
         "prefix": prefix,
         "subnet": prefix_to_subnet(prefix),
