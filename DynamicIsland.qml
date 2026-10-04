@@ -3284,8 +3284,6 @@ PanelWindow {
         // plugged-in case. LiveActivityChip no longer shows low battery.
         BatteryBadge {
             size: island.idleBadgeSize
-            surfaceColor: island.surfaceColor
-            glassRim: island.glassRim
             battery: batteryMonitor
             enabledSetting: settingsStore.batteryBadge
             showPercent: settingsStore.batteryBadgePercent
