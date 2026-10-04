@@ -1225,7 +1225,7 @@ PanelWindow {
         Behavior on color { ColorAnimation { duration: 300 } }
         topLeftRadius: 0
         topRightRadius: 0
-        // The collapsed strip is only 16 px tall, so its corners take half
+        // The collapsed strip is only 10 px tall, so its corners take half
         // its height (fully round ends) instead of the pill's 18 px.
         readonly property real cornerRadius: Math.min(18, height / 2)
         bottomLeftRadius: cornerRadius
@@ -1428,7 +1428,7 @@ PanelWindow {
                 case "screenshot": return 150
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 172 : 190
                 default:
-                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 16
+                    if (island.pillModeEffective === "strip" && !island.stripHovered) return 10
                     // Bumped from 36, explicit user request.
                     return island.idleHeight
             }
