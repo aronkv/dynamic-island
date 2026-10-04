@@ -1335,6 +1335,12 @@ PanelWindow {
                 case "screenshot": return 220
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 360 : 280
                 default:
+                    // A workspace switch shows the dots at the plain pill's
+                    // size ([cover] [clock] [cava]) whatever the now-playing
+                    // mode — a long lyric line or title used to stretch the
+                    // dots across a wide pill, a short one squeezed them.
+                    if (island.workspaceActive)
+                        return artSlot.implicitWidth * 2 + idleClock.implicitWidth + clockRow.spacing * 2 + 36
                     // Strip mode keeps the island's own width (only the
                     // height collapses, see targetHeight).
                     return idleRow.implicitWidth + 36
@@ -1708,7 +1714,10 @@ PanelWindow {
                     }
                 }
 
-                Clock { visible: island.idleMediaMode === "none" || island.idleMediaMode === "art" }
+                Clock {
+                    id: idleClock
+                    visible: island.idleMediaMode === "none" || island.idleMediaMode === "art"
+                }
 
                 // Title mode: the track takes the clock's place, centred
                 // between the cover and the cava bars.
