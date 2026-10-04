@@ -1319,7 +1319,7 @@ PanelWindow {
                     if (quickOverviewPanel.activeView === "battery") return 470
                     if (quickOverviewPanel.activeView === "calculator") return 560
                     if (quickOverviewPanel.activeView === "calendar") return 580
-                    if (quickOverviewPanel.activeView === "settings") return 400
+                    if (quickOverviewPanel.activeView === "settings") return 620
                     if (quickOverviewPanel.activeView === "tray") return 400
                     return 340
                 case "volume": return 300
@@ -1383,7 +1383,7 @@ PanelWindow {
                     // arbitrarily-different ones.
                     if (quickOverviewPanel.activeView === "bluetooth") return 422
                     if (quickOverviewPanel.activeView === "battery") return 385
-                    if (quickOverviewPanel.activeView === "settings") return 482
+                    if (quickOverviewPanel.activeView === "settings") return 520
                     if (quickOverviewPanel.activeView === "calculator") return Math.max(quickOverviewPanel.calcHistoryVisible ? 300 : 0, Math.ceil(quickOverviewPanel.calcNaturalHeight) + 28)
                     if (quickOverviewPanel.activeView === "weather") return 522
                     if (quickOverviewPanel.activeView === "calendar") return 400

@@ -285,7 +285,7 @@ ColumnLayout {
         Text {
             x: 12
             anchors.verticalCenter: parent.verticalCenter
-            width: 82
+            width: 62
             text: segRow.label
             color: "#ffffff"
             font.pixelSize: 13
@@ -293,9 +293,9 @@ ColumnLayout {
         }
         RowLayout {
             id: slot
-            x: 100
+            x: 82
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 112
+            width: parent.width - 92
         }
     }
 
@@ -326,393 +326,408 @@ ColumnLayout {
             maskSpreadAtMin: 1.0
         }
 
-        ColumnLayout {
+        // Two columns of sections, each column independent in height.
+        RowLayout {
             id: body
             width: scroller.width
-            spacing: 6
+            spacing: 12
 
-            Section {
-                title: "APPEARANCE"
-                Group {
-                    Row {
-                        icon: "view-dual-symbolic"
-                        tint: Theme.blue
-                        label: "Liquid Glass"
-                        subtitle: "Frosted glass island and windows"
-                        checked: panel.store ? panel.store.blurEnabled : false
-                        onToggled: if (panel.store) panel.store.blurEnabled = !panel.store.blurEnabled
-                    }
-                    Separator {}
-                    Row {
-                        icon: "window-maximize-symbolic"
-                        tint: "#5e5ce6"
-                        label: "Strip mode"
-                        subtitle: "Collapse the idle island to a thin bar"
-                        checked: panel.store ? panel.store.pillMode === "strip" : false
-                        onToggled: if (panel.store) panel.store.pillMode = (panel.store.pillMode === "strip" ? "pill" : "strip")
+            ColumnLayout {
+                Layout.preferredWidth: 1
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                spacing: 6
+
+                Section {
+                    title: "APPEARANCE"
+                    Group {
+                        Row {
+                            icon: "view-dual-symbolic"
+                            tint: Theme.blue
+                            label: "Liquid Glass"
+                            subtitle: "Frosted glass island and windows"
+                            checked: panel.store ? panel.store.blurEnabled : false
+                            onToggled: if (panel.store) panel.store.blurEnabled = !panel.store.blurEnabled
+                        }
+                        Separator {}
+                        Row {
+                            icon: "window-maximize-symbolic"
+                            tint: "#5e5ce6"
+                            label: "Strip mode"
+                            subtitle: "Collapse the idle island to a thin bar"
+                            checked: panel.store ? panel.store.pillMode === "strip" : false
+                            onToggled: if (panel.store) panel.store.pillMode = (panel.store.pillMode === "strip" ? "pill" : "strip")
+                        }
                     }
                 }
-            }
 
-            Section {
-                title: "DISPLAY"
-                Group {
-                    Row {
-                        icon: "weather-clear-night-symbolic"
-                        tint: Theme.orange
-                        label: "Night Shift"
-                        subtitle: panel.nightLight && !panel.nightLight.available ? "Needs hyprsunset: sudo pacman -S hyprsunset"
-                            : panel.store && panel.store.nightLightSchedule === "always" ? "Warmer colors, always on"
-                            : "Warmer colors from sunset to sunrise"
-                        checked: panel.store ? panel.store.nightLight : false
-                        onToggled: if (panel.store) panel.store.nightLight = !panel.store.nightLight
-                    }
-                    Item {
-                        Layout.fillWidth: true
-                        implicitHeight: 86
-                        visible: panel.store ? panel.store.nightLight : false
+                Section {
+                    title: "DISPLAY"
+                    Group {
+                        Row {
+                            icon: "weather-clear-night-symbolic"
+                            tint: Theme.orange
+                            label: "Night Shift"
+                            subtitle: panel.nightLight && !panel.nightLight.available ? "Needs hyprsunset: sudo pacman -S hyprsunset"
+                                : panel.store && panel.store.nightLightSchedule === "always" ? "Warmer colors, always on"
+                                : "Warmer colors from sunset to sunrise"
+                            checked: panel.store ? panel.store.nightLight : false
+                            onToggled: if (panel.store) panel.store.nightLight = !panel.store.nightLight
+                        }
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 86
+                            visible: panel.store ? panel.store.nightLight : false
 
-                        Rectangle {
-                            id: nsTrack
-                            x: 50
-                            y: 4
-                            width: parent.width - 62
-                            height: 30
-                            radius: 9
-                            color: Theme.cardElevated
-                            readonly property int idx: panel.store && panel.store.nightLightSchedule === "always" ? 1 : 0
                             Rectangle {
-                                x: 3 + nsTrack.idx * (nsTrack.width - 6) / 2
-                                y: 3
-                                width: (nsTrack.width - 6) / 2
-                                height: parent.height - 6
-                                radius: 7
-                                color: "#ffffff"
-                                Behavior on x { enabled: panel.segAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180; easing.type: Easing.OutCubic } }
-                            }
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 3
-                                spacing: 0
-                                SegmentButton { label: "Sunset to Sunrise"; active: nsTrack.idx === 0; onClicked: if (panel.store) panel.store.nightLightSchedule = "sunset" }
-                                SegmentButton { label: "Always"; active: nsTrack.idx === 1; onClicked: if (panel.store) panel.store.nightLightSchedule = "always" }
-                            }
-                        }
-
-                        // Warmth slider: 6000 K (less warm) → 2500 K (more warm).
-                        RowLayout {
-                            x: 50
-                            y: 46
-                            width: parent.width - 62
-                            spacing: 8
-                            Text { text: "Less warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
-                            Item {
-                                id: warmth
-                                Layout.fillWidth: true
-                                implicitHeight: 24
-                                readonly property real value: panel.store ? (6000 - panel.store.nightLightTemp) / 3500 : 0.57
+                                id: nsTrack
+                                x: 50
+                                y: 4
+                                width: parent.width - 62
+                                height: 30
+                                radius: 9
+                                color: Theme.cardElevated
+                                readonly property int idx: panel.store && panel.store.nightLightSchedule === "always" ? 1 : 0
                                 Rectangle {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width
-                                    height: 6
-                                    radius: 3
-                                    gradient: Gradient {
-                                        orientation: Gradient.Horizontal
-                                        GradientStop { position: 0; color: "#ffe6c7" }
-                                        GradientStop { position: 1; color: "#ff9f0a" }
-                                    }
-                                }
-                                Rectangle {
-                                    width: 20
-                                    height: 20
-                                    radius: 10
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    x: Math.max(0, Math.min(1, warmth.value)) * (warmth.width - width)
+                                    x: 3 + nsTrack.idx * (nsTrack.width - 6) / 2
+                                    y: 3
+                                    width: (nsTrack.width - 6) / 2
+                                    height: parent.height - 6
+                                    radius: 7
                                     color: "#ffffff"
-                                    border.color: Qt.rgba(0, 0, 0, 0.2)
+                                    Behavior on x { enabled: panel.segAnim; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180; easing.type: Easing.OutCubic } }
                                 }
-                                MouseArea {
+                                RowLayout {
                                     anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    function setAt(x) {
-                                        const v = Math.max(0, Math.min(1, x / width))
-                                        if (panel.store) panel.store.nightLightTemp = Math.round((6000 - v * 3500) / 100) * 100
-                                    }
-                                    onPressed: (mouse) => setAt(mouse.x)
-                                    onPositionChanged: (mouse) => { if (pressed) setAt(mouse.x) }
+                                    anchors.margins: 3
+                                    spacing: 0
+                                    SegmentButton { label: "Sunset to Sunrise"; active: nsTrack.idx === 0; onClicked: if (panel.store) panel.store.nightLightSchedule = "sunset" }
+                                    SegmentButton { label: "Always"; active: nsTrack.idx === 1; onClicked: if (panel.store) panel.store.nightLightSchedule = "always" }
                                 }
                             }
-                            Text { text: "More warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
-                        }
-                    }
-                    Separator {}
-                    Row {
-                        icon: "view-restore-symbolic"
-                        tint: "#5e5ce6"
-                        label: "Reduce motion"
-                        subtitle: "No springs, slides or ambient animations"
-                        checked: panel.store ? panel.store.reduceMotion : false
-                        onToggled: if (panel.store) panel.store.reduceMotion = !panel.store.reduceMotion
-                    }
-                    Separator {}
-                    Row {
-                        icon: "accessories-text-editor-symbolic"
-                        tint: "#7f6df2"
-                        label: "Obsidian follows theme"
-                        subtitle: panel.store && panel.store.obsidianFollowTheme ? "Island theme uses the current accent" : "Island theme uses Obsidian purple"
-                        checked: panel.store ? panel.store.obsidianFollowTheme : true
-                        onToggled: if (panel.store) panel.store.obsidianFollowTheme = !panel.store.obsidianFollowTheme
-                    }
-                }
-            }
 
-            Section {
-                title: "NOW PLAYING IN THE ISLAND"
-                Rectangle {
-                    id: segTrack
-                    Layout.fillWidth: true
-                    implicitHeight: 34
-                    radius: 10
-                    color: Theme.card
-                    readonly property var modes: ["art", "title", "lyrics"]
-                    readonly property int activeIndex: panel.store ? Math.max(0, modes.indexOf(panel.store.idlePlayerMode)) : 0
-                    readonly property real segW: (width - 6) / 3
-
-                    Rectangle {
-                        x: 3 + segTrack.activeIndex * segTrack.segW
-                        y: 3
-                        width: segTrack.segW
-                        height: parent.height - 6
-                        radius: 8
-                        color: "#ffffff"
-                        Behavior on x { enabled: panel.segAnim; SpringAnimation { spring: 4; damping: 0.35 } }
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 3
-                        spacing: 0
-                        SegmentButton { label: "Album art"; active: segTrack.activeIndex === 0; onClicked: if (panel.store) panel.store.idlePlayerMode = "art" }
-                        SegmentButton { label: "Track title"; active: segTrack.activeIndex === 1; onClicked: if (panel.store) panel.store.idlePlayerMode = "title" }
-                        SegmentButton { label: "Lyrics"; active: segTrack.activeIndex === 2; onClicked: if (panel.store) panel.store.idlePlayerMode = "lyrics" }
-                    }
-                }
-            }
-
-            Section {
-                title: "SCREEN RECORDING"
-                Group {
-                    SegRow {
-                        label: "Resolution"
-                        SegTrack {
-                            labels: ["Native", "1080p", "720p", "480p"]
-                            values: ["native", "1080", "720", "480"]
-                            current: panel.store ? panel.store.recordResolution : "native"
-                            onPicked: (v) => { if (panel.store) panel.store.recordResolution = v }
-                        }
-                    }
-                    Separator {}
-                    SegRow {
-                        label: "Frame rate"
-                        SegTrack {
-                            labels: ["30 fps", "60 fps"]
-                            values: [30, 60]
-                            current: panel.store ? panel.store.recordFps : 60
-                            onPicked: (v) => { if (panel.store) panel.store.recordFps = v }
-                        }
-                    }
-                    Separator {}
-                    SegRow {
-                        label: "Quality"
-                        SegTrack {
-                            labels: ["Medium", "High", "Very high", "Ultra"]
-                            values: ["medium", "high", "very_high", "ultra"]
-                            current: panel.store ? panel.store.recordQuality : "very_high"
-                            onPicked: (v) => { if (panel.store) panel.store.recordQuality = v }
-                        }
-                    }
-                    Separator {}
-                    Row {
-                        icon: "audio-speakers-symbolic"
-                        tint: Theme.blue
-                        label: "System audio"
-                        checked: panel.store ? panel.store.recordSystemAudio : true
-                        onToggled: if (panel.store) panel.store.recordSystemAudio = !panel.store.recordSystemAudio
-                    }
-                    Separator {}
-                    Row {
-                        icon: "audio-input-microphone-symbolic"
-                        tint: Theme.orange
-                        label: "Microphone"
-                        checked: panel.store ? panel.store.recordMic : false
-                        onToggled: if (panel.store) panel.store.recordMic = !panel.store.recordMic
-                    }
-                    Separator {}
-                    Row {
-                        icon: "input-mouse-symbolic"
-                        tint: "#8e8e93"
-                        label: "Show cursor"
-                        checked: panel.store ? panel.store.recordCursor : true
-                        onToggled: if (panel.store) panel.store.recordCursor = !panel.store.recordCursor
-                    }
-                }
-                Text {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 12
-                    text: "SUPER+R starts / stops · saved to ~/Videos/Recordings · changes apply to the next recording"
-                    color: "#ffffff"
-                    opacity: 0.35
-                    font.pixelSize: 10
-                    font.family: Theme.fontText
-                    wrapMode: Text.WordWrap
-                }
-            }
-
-            Section {
-                title: "BATTERY"
-                Group {
-                    Row {
-                        icon: "battery-level-50-symbolic"
-                        tint: Theme.green
-                        label: "Battery outside the pill"
-                        subtitle: "Shown left of the island while on battery"
-                        checked: panel.store ? panel.store.batteryBadge : false
-                        onToggled: if (panel.store) panel.store.batteryBadge = !panel.store.batteryBadge
-                    }
-                    Separator {}
-                    SegRow {
-                        label: "Percentage"
-                        opacity: panel.store && panel.store.batteryBadge ? 1 : 0.4
-                        SegTrack {
-                            labels: ["Off", "Beside", "Inside"]
-                            values: ["off", "beside", "inside"]
-                            current: !panel.store || !panel.store.batteryBadgePercent ? "off"
-                                : panel.store.batteryPercentInside ? "inside" : "beside"
-                            onPicked: (v) => {
-                                if (!panel.store) return
-                                panel.store.batteryBadgePercent = v !== "off"
-                                panel.store.batteryPercentInside = v === "inside"
+                            // Warmth slider: 6000 K (less warm) → 2500 K (more warm).
+                            RowLayout {
+                                x: 50
+                                y: 46
+                                width: parent.width - 62
+                                spacing: 8
+                                Text { text: "Less warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
+                                Item {
+                                    id: warmth
+                                    Layout.fillWidth: true
+                                    implicitHeight: 24
+                                    readonly property real value: panel.store ? (6000 - panel.store.nightLightTemp) / 3500 : 0.57
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width
+                                        height: 6
+                                        radius: 3
+                                        gradient: Gradient {
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0; color: "#ffe6c7" }
+                                            GradientStop { position: 1; color: "#ff9f0a" }
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 20
+                                        height: 20
+                                        radius: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        x: Math.max(0, Math.min(1, warmth.value)) * (warmth.width - width)
+                                        color: "#ffffff"
+                                        border.color: Qt.rgba(0, 0, 0, 0.2)
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        function setAt(x) {
+                                            const v = Math.max(0, Math.min(1, x / width))
+                                            if (panel.store) panel.store.nightLightTemp = Math.round((6000 - v * 3500) / 100) * 100
+                                        }
+                                        onPressed: (mouse) => setAt(mouse.x)
+                                        onPositionChanged: (mouse) => { if (pressed) setAt(mouse.x) }
+                                    }
+                                }
+                                Text { text: "More warm"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.family: Theme.fontText }
                             }
                         }
+                        Separator {}
+                        Row {
+                            icon: "view-restore-symbolic"
+                            tint: "#5e5ce6"
+                            label: "Reduce motion"
+                            subtitle: "No springs, slides or ambient animations"
+                            checked: panel.store ? panel.store.reduceMotion : false
+                            onToggled: if (panel.store) panel.store.reduceMotion = !panel.store.reduceMotion
+                        }
+                        Separator {}
+                        Row {
+                            icon: "accessories-text-editor-symbolic"
+                            tint: "#7f6df2"
+                            label: "Obsidian follows theme"
+                            subtitle: panel.store && panel.store.obsidianFollowTheme ? "Island theme uses the current accent" : "Island theme uses Obsidian purple"
+                            checked: panel.store ? panel.store.obsidianFollowTheme : true
+                            onToggled: if (panel.store) panel.store.obsidianFollowTheme = !panel.store.obsidianFollowTheme
+                        }
                     }
                 }
-            }
 
-            Section {
-                title: "NOTIFICATIONS & PRIVACY"
-                Group {
-                    Row {
-                        icon: "weather-clear-night-symbolic"
-                        tint: "#5e5ce6"
-                        label: "Do Not Disturb"
-                        subtitle: "Notifications won't expand the island"
-                        checked: panel.store ? panel.store.doNotDisturb : false
-                        onToggled: if (panel.store) panel.store.doNotDisturb = !panel.store.doNotDisturb
-                    }
-                    Separator {}
-                    Row {
-                        icon: "audio-input-microphone-symbolic"
-                        tint: Theme.orange
-                        label: "Microphone indicator"
-                        checked: panel.store ? panel.store.micIndicatorEnabled : false
-                        onToggled: if (panel.store) panel.store.micIndicatorEnabled = !panel.store.micIndicatorEnabled
-                    }
-                    Separator {}
-                    Row {
-                        icon: "camera-web-symbolic"
-                        tint: Theme.green
-                        label: "Camera indicator"
-                        checked: panel.store ? panel.store.cameraIndicatorEnabled : false
-                        onToggled: if (panel.store) panel.store.cameraIndicatorEnabled = !panel.store.cameraIndicatorEnabled
-                    }
-                }
-            }
-
-            Section {
-                title: "CALCULATOR"
-                Group {
-                    Row {
-                        icon: "document-open-recent-symbolic"
-                        tint: Theme.orange
-                        label: "Always show history"
-                        subtitle: "Otherwise open it with the clock button or Ctrl+H"
-                        checked: panel.store ? panel.store.calcHistoryAlways : false
-                        onToggled: if (panel.store) panel.store.calcHistoryAlways = !panel.store.calcHistoryAlways
-                    }
-                }
-            }
-
-            Section {
-                title: "WEATHER"
-                Group {
-                    Row {
-                        icon: "weather-showers-symbolic"
-                        tint: Theme.blue
-                        label: "Rain alert"
-                        subtitle: "Heads-up in the island ~15–30 min before rain"
-                        checked: panel.store ? panel.store.rainAlert : false
-                        onToggled: if (panel.store) panel.store.rainAlert = !panel.store.rainAlert
-                    }
-                    Separator {}
-                    Row {
-                        icon: "find-location-symbolic"
-                        tint: Theme.blue
-                        label: "Manual location"
-                        subtitle: panel.store && panel.store.weatherManualLocation ? "" : "Detected automatically (Wi-Fi, else IP)"
-                        checked: panel.store ? panel.store.weatherManualLocation : false
-                        onToggled: if (panel.store) panel.store.weatherManualLocation = !panel.store.weatherManualLocation
-                    }
-
-                    Item {
+                Section {
+                    title: "NOW PLAYING IN THE ISLAND"
+                    Rectangle {
+                        id: segTrack
                         Layout.fillWidth: true
-                        implicitHeight: 44
-                        visible: panel.store ? panel.store.weatherManualLocation : false
+                        implicitHeight: 34
+                        radius: 10
+                        color: Theme.card
+                        readonly property var modes: ["art", "title", "lyrics"]
+                        readonly property int activeIndex: panel.store ? Math.max(0, modes.indexOf(panel.store.idlePlayerMode)) : 0
+                        readonly property real segW: (width - 6) / 3
 
                         Rectangle {
-                            anchors.fill: parent
-                            anchors.leftMargin: 50
-                            anchors.rightMargin: 12
-                            anchors.bottomMargin: 8
+                            x: 3 + segTrack.activeIndex * segTrack.segW
+                            y: 3
+                            width: segTrack.segW
+                            height: parent.height - 6
                             radius: 8
-                            color: Theme.cardElevated
+                            color: "#ffffff"
+                            Behavior on x { enabled: panel.segAnim; SpringAnimation { spring: 4; damping: 0.35 } }
+                        }
 
-                            TextInput {
-                                id: cityInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: "#ffffff"
-                                font.pixelSize: 12
-                                font.family: Theme.fontText
-                                selectByMouse: true
-                                clip: true
-                                focus: panel.store ? panel.store.weatherManualLocation : false
-                                Component.onCompleted: text = panel.store ? panel.store.weatherCity : ""
-                                onTextChanged: if (panel.store) panel.store.weatherCity = text
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            spacing: 0
+                            SegmentButton { label: "Album art"; active: segTrack.activeIndex === 0; onClicked: if (panel.store) panel.store.idlePlayerMode = "art" }
+                            SegmentButton { label: "Track title"; active: segTrack.activeIndex === 1; onClicked: if (panel.store) panel.store.idlePlayerMode = "title" }
+                            SegmentButton { label: "Lyrics"; active: segTrack.activeIndex === 2; onClicked: if (panel.store) panel.store.idlePlayerMode = "lyrics" }
+                        }
+                    }
+                }
 
-                                Text {
-                                    visible: cityInput.text.length === 0
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "City, e.g. Budapest"
-                                    color: "#ffffff"
-                                    opacity: 0.35
-                                    font: cityInput.font
+                Section {
+                    title: "BATTERY"
+                    Group {
+                        Row {
+                            icon: "battery-level-50-symbolic"
+                            tint: Theme.green
+                            label: "Battery outside the pill"
+                            subtitle: "Shown left of the island while on battery"
+                            checked: panel.store ? panel.store.batteryBadge : false
+                            onToggled: if (panel.store) panel.store.batteryBadge = !panel.store.batteryBadge
+                        }
+                        Separator {}
+                        SegRow {
+                            label: "Percentage"
+                            opacity: panel.store && panel.store.batteryBadge ? 1 : 0.4
+                            SegTrack {
+                                labels: ["Off", "Beside", "Inside"]
+                                values: ["off", "beside", "inside"]
+                                current: !panel.store || !panel.store.batteryBadgePercent ? "off"
+                                    : panel.store.batteryPercentInside ? "inside" : "beside"
+                                onPicked: (v) => {
+                                    if (!panel.store) return
+                                    panel.store.batteryBadgePercent = v !== "off"
+                                    panel.store.batteryPercentInside = v === "inside"
                                 }
                             }
                         }
                     }
+                }
+            }
 
+            ColumnLayout {
+                Layout.preferredWidth: 1
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                spacing: 6
+
+                Section {
+                    title: "SCREEN RECORDING"
+                    Group {
+                        SegRow {
+                            label: "Resolution"
+                            SegTrack {
+                                labels: ["Native", "1080p", "720p", "480p"]
+                                values: ["native", "1080", "720", "480"]
+                                current: panel.store ? panel.store.recordResolution : "native"
+                                onPicked: (v) => { if (panel.store) panel.store.recordResolution = v }
+                            }
+                        }
+                        Separator {}
+                        SegRow {
+                            label: "Frame rate"
+                            SegTrack {
+                                labels: ["30 fps", "60 fps"]
+                                values: [30, 60]
+                                current: panel.store ? panel.store.recordFps : 60
+                                onPicked: (v) => { if (panel.store) panel.store.recordFps = v }
+                            }
+                        }
+                        Separator {}
+                        SegRow {
+                            label: "Quality"
+                            SegTrack {
+                                labels: ["Medium", "High", "V. high", "Ultra"]
+                                values: ["medium", "high", "very_high", "ultra"]
+                                current: panel.store ? panel.store.recordQuality : "very_high"
+                                onPicked: (v) => { if (panel.store) panel.store.recordQuality = v }
+                            }
+                        }
+                        Separator {}
+                        Row {
+                            icon: "audio-speakers-symbolic"
+                            tint: Theme.blue
+                            label: "System audio"
+                            checked: panel.store ? panel.store.recordSystemAudio : true
+                            onToggled: if (panel.store) panel.store.recordSystemAudio = !panel.store.recordSystemAudio
+                        }
+                        Separator {}
+                        Row {
+                            icon: "audio-input-microphone-symbolic"
+                            tint: Theme.orange
+                            label: "Microphone"
+                            checked: panel.store ? panel.store.recordMic : false
+                            onToggled: if (panel.store) panel.store.recordMic = !panel.store.recordMic
+                        }
+                        Separator {}
+                        Row {
+                            icon: "input-mouse-symbolic"
+                            tint: "#8e8e93"
+                            label: "Show cursor"
+                            checked: panel.store ? panel.store.recordCursor : true
+                            onToggled: if (panel.store) panel.store.recordCursor = !panel.store.recordCursor
+                        }
+                    }
                     Text {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 50
-                        Layout.bottomMargin: 8
-                        visible: panel.weatherMonitor ? panel.weatherMonitor.locationError : false
-                        text: "No such place — the last reading is still showing"
-                        color: Theme.red
-                        font.pixelSize: 11
+                        Layout.leftMargin: 12
+                        text: "SUPER+R starts / stops · saved to ~/Videos/Recordings · changes apply to the next recording"
+                        color: "#ffffff"
+                        opacity: 0.35
+                        font.pixelSize: 10
                         font.family: Theme.fontText
                         wrapMode: Text.WordWrap
+                    }
+                }
+
+                Section {
+                    title: "NOTIFICATIONS & PRIVACY"
+                    Group {
+                        Row {
+                            icon: "weather-clear-night-symbolic"
+                            tint: "#5e5ce6"
+                            label: "Do Not Disturb"
+                            subtitle: "Notifications won't expand the island"
+                            checked: panel.store ? panel.store.doNotDisturb : false
+                            onToggled: if (panel.store) panel.store.doNotDisturb = !panel.store.doNotDisturb
+                        }
+                        Separator {}
+                        Row {
+                            icon: "audio-input-microphone-symbolic"
+                            tint: Theme.orange
+                            label: "Microphone indicator"
+                            checked: panel.store ? panel.store.micIndicatorEnabled : false
+                            onToggled: if (panel.store) panel.store.micIndicatorEnabled = !panel.store.micIndicatorEnabled
+                        }
+                        Separator {}
+                        Row {
+                            icon: "camera-web-symbolic"
+                            tint: Theme.green
+                            label: "Camera indicator"
+                            checked: panel.store ? panel.store.cameraIndicatorEnabled : false
+                            onToggled: if (panel.store) panel.store.cameraIndicatorEnabled = !panel.store.cameraIndicatorEnabled
+                        }
+                    }
+                }
+
+                Section {
+                    title: "CALCULATOR"
+                    Group {
+                        Row {
+                            icon: "document-open-recent-symbolic"
+                            tint: Theme.orange
+                            label: "Always show history"
+                            subtitle: "Otherwise open it with the clock button or Ctrl+H"
+                            checked: panel.store ? panel.store.calcHistoryAlways : false
+                            onToggled: if (panel.store) panel.store.calcHistoryAlways = !panel.store.calcHistoryAlways
+                        }
+                    }
+                }
+
+                Section {
+                    title: "WEATHER"
+                    Group {
+                        Row {
+                            icon: "weather-showers-symbolic"
+                            tint: Theme.blue
+                            label: "Rain alert"
+                            subtitle: "Heads-up in the island ~15–30 min before rain"
+                            checked: panel.store ? panel.store.rainAlert : false
+                            onToggled: if (panel.store) panel.store.rainAlert = !panel.store.rainAlert
+                        }
+                        Separator {}
+                        Row {
+                            icon: "find-location-symbolic"
+                            tint: Theme.blue
+                            label: "Manual location"
+                            subtitle: panel.store && panel.store.weatherManualLocation ? "" : "Detected automatically (Wi-Fi, else IP)"
+                            checked: panel.store ? panel.store.weatherManualLocation : false
+                            onToggled: if (panel.store) panel.store.weatherManualLocation = !panel.store.weatherManualLocation
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 44
+                            visible: panel.store ? panel.store.weatherManualLocation : false
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.leftMargin: 50
+                                anchors.rightMargin: 12
+                                anchors.bottomMargin: 8
+                                radius: 8
+                                color: Theme.cardElevated
+
+                                TextInput {
+                                    id: cityInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    font.family: Theme.fontText
+                                    selectByMouse: true
+                                    clip: true
+                                    focus: panel.store ? panel.store.weatherManualLocation : false
+                                    Component.onCompleted: text = panel.store ? panel.store.weatherCity : ""
+                                    onTextChanged: if (panel.store) panel.store.weatherCity = text
+
+                                    Text {
+                                        visible: cityInput.text.length === 0
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "City, e.g. Budapest"
+                                        color: "#ffffff"
+                                        opacity: 0.35
+                                        font: cityInput.font
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 50
+                            Layout.bottomMargin: 8
+                            visible: panel.weatherMonitor ? panel.weatherMonitor.locationError : false
+                            text: "No such place — the last reading is still showing"
+                            color: Theme.red
+                            font.pixelSize: 11
+                            font.family: Theme.fontText
+                            wrapMode: Text.WordWrap
+                        }
                     }
                 }
             }
