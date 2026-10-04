@@ -1396,7 +1396,7 @@ PanelWindow {
                 case "lowbattery": return 116
                 case "power": return 196
                 case "launcher": return 470
-                case "system": return 478
+                case "system": return 620
                 case "activity": return activityStore.timerActive ? (activityStore.recording ? 190 : 150) : (activityStore.recording ? 190 : 150)
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
@@ -2943,6 +2943,7 @@ PanelWindow {
             anchors.fill: parent
             z: 1
             mon: systemMonitor
+            battery: batteryMonitor
             active: island.displayState === "system"
             accent: island.accentColor
             onCloseRequested: island.systemOpen = false
