@@ -38,7 +38,13 @@ Item {
     readonly property real contentW: glyphX + bodyW + 4
     readonly property real glyphTop: (height - bodyH) / 2
 
-    width: Math.max(size, contentW + 16)
+    // The glyph's right edge sits as far from the island as the charging
+    // bolt's tip: the bolt (ChargeBadge, 28 px, shifted 6 px toward the
+    // island inside a 44 px box centred in the same idleBadgeSize slot)
+    // ends ~3.4 px inside its slot, so the content is right-aligned with
+    // that inset instead of being centred.
+    readonly property real rightInset: 3
+    width: Math.max(size, contentW + rightInset + 8)
     height: size
 
     opacity: active ? 1 : 0
@@ -60,7 +66,8 @@ Item {
         id: box
         width: badge.contentW
         height: badge.height
-        anchors.centerIn: parent
+        anchors.right: parent.right
+        anchors.rightMargin: badge.rightInset
 
         // Halo rings shared by glyph and text: faint dark copies offset on
         // rings around the shape add up to a soft falloff. (Stroking the
