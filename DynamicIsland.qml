@@ -2439,7 +2439,14 @@ PanelWindow {
             anchors.top: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
             width: island.mediaCardWidth
-            height: island.mediaCardHeight
+            // Follows the notch while its spring overshoots past the card
+            // height, so no black strip shows under the art.
+            height: Math.max(island.mediaCardHeight, notch.height)
+            // The blur must stay inside the card: with MultiEffect's auto
+            // padding the blurred cover spilled ~blurMax px below it, and
+            // while the notch's spring overshot past the card height that
+            // spill showed as a bright band under the dark gradient.
+            clip: true
             opacity: island.displayState === "mediaExpanded" && mprisMonitor.anyPlayer !== null
                 && ambientArt.status === Image.Ready ? 1 : 0
             visible: opacity > 0
@@ -2461,6 +2468,7 @@ PanelWindow {
                 blurEnabled: true
                 blur: 1.0
                 blurMax: 64
+                autoPaddingEnabled: false
                 saturation: 0.3
                 opacity: 0.55
             }
