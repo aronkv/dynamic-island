@@ -18,7 +18,11 @@ Item {
     // same as "nothing running at all". activePlayer stays strict (playing
     // only) since it also drives the automatic mini-pill-replaces-clock
     // behavior, which shouldn't fire just because a paused player exists.
-    readonly property var anyPlayer: activePlayer ?? _pick(Mpris.players.values)
+    // A stopped player with nothing loaded (Strawberry open but stopped)
+    // doesn't count: the island showed an empty cover, title and player
+    // card for it. Paused players with a track still count.
+    readonly property var anyPlayer: activePlayer ?? _pick(Mpris.players.values.filter(p =>
+        p.playbackState !== MprisPlaybackState.Stopped && (p.trackTitle || "") !== ""))
 
     // Lower-case names identifying a player's app, for matching its PipeWire
     // output stream (CavaMonitor): the D-Bus name segment ("spotify",
