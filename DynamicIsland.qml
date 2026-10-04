@@ -3101,7 +3101,13 @@ PanelWindow {
         }
 
         SystemPanel {
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("system")
+            height: notch.heightFor("system")
             z: 1
             mon: systemMonitor
             battery: batteryMonitor
@@ -3116,7 +3122,13 @@ PanelWindow {
         }
 
         ActivityPanel {
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("activity")
+            height: notch.heightFor("activity")
             z: 1
             store: activityStore
             weather: weatherMonitor
@@ -3130,7 +3142,13 @@ PanelWindow {
         }
 
         NotificationsPanel {
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("notifications")
+            height: notch.heightFor("notifications")
             z: 1
             store: notificationStore
             active: island.displayState === "notifications"
@@ -3160,7 +3178,13 @@ PanelWindow {
         LauncherPanel {
             id: launcherPanel
             activity: activityStore
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("launcher")
+            height: notch.heightFor("launcher")
             z: 1
             active: island.displayState === "launcher"
             onCloseRequested: island.launcherOpen = false
@@ -3173,7 +3197,13 @@ PanelWindow {
 
         ClipboardPanel {
             id: clipboardPanel
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("clipboard")
+            height: notch.heightFor("clipboard")
             z: 1
             monitor: clipboardMonitor
             active: island.displayState === "clipboard"
@@ -3187,7 +3217,13 @@ PanelWindow {
 
         PowerMenu {
             id: powerMenu
-            anchors.fill: parent
+            // Laid out at its own final size, revealed by the notch's clip — with
+            // anchors.fill it followed the morphing notch and its content slid
+            // and re-laid out during panel-to-panel switches.
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: notch.widthFor("power")
+            height: notch.heightFor("power")
             z: 1
             active: island.displayState === "power"
             onCloseRequested: island.powerMenuOpen = false
