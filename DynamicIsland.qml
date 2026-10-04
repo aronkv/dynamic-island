@@ -987,9 +987,11 @@ PanelWindow {
     // notch Rectangle (and the independently-positioned badges) inside it do.
     // Resizing the real surface every animation frame causes compositor-level
     // stutter and re-centering jumps.
-    // Must stay wider than the widest state (+ spring overshoot): a state
-    // wider than the surface gets its sides and corners cut off square.
-    implicitWidth: 640
+    // Must stay wider than the widest state AND the idle pill plus its side
+    // badges: at 640 a long lyric line pushed the right-hand badges (mic,
+    // screen share) past the surface edge and they were cut off. The input
+    // mask still covers only what's drawn, so the extra width is inert.
+    implicitWidth: 960
     // 460, not 340 — the real bug behind "the panel's bottom never rounds"
     // (2026-09-19): several overview sub-panels need MORE height than this
     // fixed surface had (bluetooth: 440, theme: 460, settings: 400, all
@@ -1938,64 +1940,34 @@ PanelWindow {
                 Item {
                     id: lyricsBox
                     visible: island.idleMediaMode === "lyrics"
-                    // 300 px keeps the pill clear of the badges beside it.
-                    readonly property real maxW: 300
-                    readonly property real overflow: Math.max(0, lyricLine.implicitWidth - maxW)
-                    implicitWidth: Math.min(lyricLine.implicitWidth, maxW)
-                    implicitHeight: lyricLine.implicitHeight
+                    // A long line doesn't scroll or shrink (user request): up
+                    // to 420 px at the normal 14 px, then it ends in "…".
+                    readonly property real maxW: 420
+                    implicitWidth: Math.min(lyricMeasure.advanceWidth, maxW)
+                    implicitHeight: 20
                     Layout.preferredWidth: implicitWidth
-                    clip: true
 
+                    TextMetrics {
+                        id: lyricMeasure
+                        text: island.idleLyricsText
+                        font.pixelSize: 14
+                        font.weight: 600
+                        font.family: "SF Pro Display"
+                    }
                     Text {
                         id: lyricLine
+                        anchors.fill: parent
                         text: island.idleLyricsText
                         color: "#ffffff"
                         font.pixelSize: 14
                         font.weight: 600
                         font.family: "SF Pro Display"
-                        onTextChanged: {
-                            marquee.stop()
-                            x = 0
-                            if (!Theme.reduceMotion) lineIn.restart()
-                            if (lyricsBox.overflow > 0 && lyricsBox.visible) marquee.restart()
-                        }
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        onTextChanged: if (!Theme.reduceMotion) lineIn.restart()
                     }
                     NumberAnimation { id: lineIn; target: lyricLine; property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
-                    SequentialAnimation {
-                        id: marquee
-                        PauseAnimation { duration: 900 }
-                        NumberAnimation {
-                            target: lyricLine
-                            property: "x"
-                            to: -lyricsBox.overflow
-                            duration: Math.max(600, lyricsBox.overflow * 22)
-                            easing.type: Easing.InOutSine
-                        }
-                    }
-                    // Soft edges while a long line scrolls: the text faded
-                    // into the pill's black instead of being cut mid-letter.
-                    Rectangle {
-                        anchors.left: parent.left
-                        width: 18
-                        height: parent.height
-                        visible: lyricLine.x < -0.5
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: "#000000" }
-                            GradientStop { position: 1; color: "transparent" }
-                        }
-                    }
-                    Rectangle {
-                        anchors.right: parent.right
-                        width: 18
-                        height: parent.height
-                        visible: lyricLine.x + lyricLine.implicitWidth > lyricsBox.width + 0.5
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: "transparent" }
-                            GradientStop { position: 1; color: "#000000" }
-                        }
-                    }
                 }
             }
         }
