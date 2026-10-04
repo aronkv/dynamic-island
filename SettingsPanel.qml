@@ -228,6 +228,9 @@ ColumnLayout {
 
         Text {
             anchors.centerIn: parent
+            // centerIn centres the whole line box (descender space
+            // included), which left the glyphs ~2 px low in the box.
+            anchors.verticalCenterOffset: -1.5
             text: btn.label
             color: btn.active ? "#000000" : "#ffffff"
             opacity: btn.active ? 1 : 0.65
@@ -292,10 +295,10 @@ ColumnLayout {
         property string label: ""
         default property alias track: slot.data
         Layout.fillWidth: true
-        implicitHeight: 68
+        implicitHeight: 74
         Text {
             x: 12
-            y: 8
+            y: 13
             text: segRow.label
             color: "#ffffff"
             font.pixelSize: 13
@@ -304,7 +307,7 @@ ColumnLayout {
         RowLayout {
             id: slot
             x: 12
-            y: 30
+            y: 36
             width: parent.width - 24
         }
     }
