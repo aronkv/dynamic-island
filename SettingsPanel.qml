@@ -240,14 +240,176 @@ ColumnLayout {
         }
     }
 
+    // ── Pages: a root list of categories → one page per category ──
+    // iOS-style push/pop, same motion as QuickOverviewPanel's sub-views:
+    // the root slides out to the left, a category page slides in from the
+    // right. Reset to the root whenever the panel is hidden.
+    property string page: ""
+    onVisibleChanged: if (!visible) page = ""
+    onPageChanged: scroller.contentY = 0
+
+    readonly property var categories: [
+        { key: "appearance", label: "Appearance", icon: "view-dual-symbolic", tint: Theme.blue,
+          summary: () => (store && store.blurEnabled ? "Liquid Glass" : "Solid") + " · " + (store && store.pillMode === "strip" ? "Strip" : "Pill") },
+        { key: "display", label: "Display", icon: "display-brightness-symbolic", tint: Theme.orange,
+          summary: () => "Night Shift " + (store && store.nightLight ? "on" : "off") + (store && store.reduceMotion ? " · Reduce motion" : "") },
+        { key: "nowplaying", label: "Now Playing", icon: "audio-x-generic-symbolic", tint: "#ff375f",
+          summary: () => ({ art: "Album art", title: "Track title", lyrics: "Lyrics" })[store ? store.idlePlayerMode : "art"] || "Album art" },
+        { key: "recording", label: "Screen Recording", icon: "media-record-symbolic", tint: Theme.red,
+          summary: () => store ? (store.recordResolution === "native" ? "Native" : store.recordResolution + "p") + " · " + store.recordFps + " fps" : "" },
+        { key: "battery", label: "Battery", icon: "battery-level-50-symbolic", tint: Theme.green,
+          summary: () => store && store.batteryBadge ? "Badge outside the pill" + (store.batteryBadgePercent ? " · %" : "") : "Badge off" },
+        { key: "notifications", label: "Notifications & Privacy", icon: "preferences-system-notifications-symbolic", tint: "#5e5ce6",
+          summary: () => store && store.doNotDisturb ? "Do Not Disturb on" : "Do Not Disturb off" },
+        { key: "calculator", label: "Calculator", icon: "accessories-calculator-symbolic", tint: "#8e8e93",
+          summary: () => store && store.calcHistoryAlways ? "History always shown" : "History on demand" },
+        { key: "weather", label: "Weather", icon: "weather-few-clouds-symbolic", tint: "#64d2ff",
+          summary: () => (store && store.rainAlert ? "Rain alert" : "No rain alert") + " · "
+              + (store && store.weatherManualLocation && store.weatherCity.trim() !== "" ? store.weatherCity.trim() : "Automatic location") }
+    ]
+    readonly property var currentCategory: categories.find(c => c.key === page) || null
+
+    component Page: ColumnLayout {
+        id: pg
+        property string key: ""
+        readonly property bool shown: panel.page === key
+        width: scroller.width
+        spacing: 6
+        opacity: shown ? 1 : 0
+        visible: opacity > 0
+        enabled: shown
+        transform: Translate {
+            x: pg.shown ? 0 : (pg.key === "" ? -Theme.panelSlide : Theme.panelSlide)
+            Behavior on x { NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
+        }
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    }
+
+    // Category row on the root page: tinted icon tile, name, a one-line
+    // summary of the current values, chevron.
+    component CategoryRow: Item {
+        id: cat
+        property var item: null
+        Layout.fillWidth: true
+        implicitHeight: 54
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(1, 1, 1, catMouse.pressed ? 0.08 : catMouse.containsMouse ? 0.04 : 0)
+            radius: Theme.radiusMedium
+        }
+        IconTile {
+            id: catIcon
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            icon: cat.item ? cat.item.icon : ""
+            color: cat.item ? cat.item.tint : Theme.blue
+        }
+        Column {
+            anchors.left: catIcon.right
+            anchors.leftMargin: 10
+            anchors.right: chevron.left
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 1
+            Text {
+                width: parent.width
+                text: cat.item ? cat.item.label : ""
+                color: "#ffffff"
+                font.pixelSize: 13
+                font.family: Theme.fontText
+                elide: Text.ElideRight
+            }
+            Text {
+                width: parent.width
+                text: cat.item ? cat.item.summary() : ""
+                color: "#ffffff"
+                opacity: 0.45
+                font.pixelSize: 10
+                font.family: Theme.fontText
+                elide: Text.ElideRight
+            }
+        }
+        Text {
+            id: chevron
+            anchors.right: parent.right
+            anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            text: "›"
+            color: "#ffffff"
+            opacity: 0.35
+            font.pixelSize: 20
+            font.family: Theme.fontText
+        }
+        MouseArea {
+            id: catMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (cat.item) panel.page = cat.item.key
+        }
+    }
+
+    // Header: the panel header on the root page; on a category page a back
+    // chevron + the category's name instead.
     PanelHeader {
         Layout.fillWidth: true
+        visible: panel.page === ""
         icon: "emblem-system-symbolic"
         title: "Settings"
         showToggle: false
         showRefresh: false
         showSettingsGear: false
         onCloseRequested: panel.closeRequested()
+    }
+    RowLayout {
+        Layout.fillWidth: true
+        visible: panel.page !== ""
+        spacing: 8
+        Rectangle {
+            implicitWidth: 30
+            implicitHeight: 30
+            radius: 15
+            color: backMouse.pressed ? Theme.cardElevated : Theme.card
+            Text {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: -1
+                text: "‹"
+                color: "#ffffff"
+                font.pixelSize: 20
+                font.family: Theme.fontText
+            }
+            MouseArea {
+                id: backMouse
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: panel.page = ""
+            }
+        }
+        IconTile {
+            visible: panel.currentCategory !== null
+            icon: panel.currentCategory ? panel.currentCategory.icon : ""
+            color: panel.currentCategory ? panel.currentCategory.tint : Theme.blue
+        }
+        Text {
+            Layout.fillWidth: true
+            text: panel.currentCategory ? panel.currentCategory.label : ""
+            color: "#ffffff"
+            font.pixelSize: 17
+            font.weight: 700
+            font.family: Theme.font
+            elide: Text.ElideRight
+        }
+    }
+
+    // Esc: back to the category list, then close.
+    Item {
+        id: keyCatcher
+        focus: !(panel.page === "weather" && panel.store && panel.store.weatherManualLocation)
+        Keys.onEscapePressed: {
+            if (panel.page !== "") panel.page = ""
+            else panel.closeRequested()
+        }
     }
 
     Flickable {
@@ -256,7 +418,14 @@ ColumnLayout {
         Layout.fillHeight: true
         clip: true
         contentWidth: width
-        contentHeight: body.implicitHeight
+        contentHeight: {
+            if (rootPage.shown) return rootPage.implicitHeight
+            for (let i = 0; i < pageHolder.children.length; i++) {
+                const c = pageHolder.children[i]
+                if (c.shown) return c.implicitHeight
+            }
+            return 0
+        }
         boundsBehavior: Flickable.StopAtBounds
 
         layer.enabled: true
@@ -267,12 +436,30 @@ ColumnLayout {
             maskSpreadAtMin: 1.0
         }
 
-        ColumnLayout {
-            id: body
-            width: scroller.width
-            spacing: 6
+        Page {
+            id: rootPage
+            key: ""
+            Group {
+                Repeater {
+                    model: panel.categories.slice(0, 3)
+                    CategoryRow { required property var modelData; item: modelData }
+                }
+            }
+            Item { implicitHeight: 4 }
+            Group {
+                Repeater {
+                    model: panel.categories.slice(3)
+                    CategoryRow { required property var modelData; item: modelData }
+                }
+            }
+        }
 
-            SectionTitle { text: "APPEARANCE" }
+        Item {
+            id: pageHolder
+            width: scroller.width
+
+        Page {
+            key: "appearance"
             Group {
                 Row {
                     icon: "view-dual-symbolic"
@@ -292,8 +479,10 @@ ColumnLayout {
                     onToggled: if (panel.store) panel.store.pillMode = (panel.store.pillMode === "strip" ? "pill" : "strip")
                 }
             }
+        }
 
-            SectionTitle { text: "DISPLAY" }
+        Page {
+            key: "display"
             Group {
                 Row {
                     icon: "weather-clear-night-symbolic"
@@ -402,8 +591,10 @@ ColumnLayout {
                     onToggled: if (panel.store) panel.store.obsidianFollowTheme = !panel.store.obsidianFollowTheme
                 }
             }
+        }
 
-            SectionTitle { text: "NOW PLAYING IN THE ISLAND" }
+        Page {
+            key: "nowplaying"
             Rectangle {
                 id: segTrack
                 Layout.fillWidth: true
@@ -433,8 +624,10 @@ ColumnLayout {
                     SegmentButton { label: "Lyrics"; active: segTrack.activeIndex === 2; onClicked: if (panel.store) panel.store.idlePlayerMode = "lyrics" }
                 }
             }
+        }
 
-            SectionTitle { text: "SCREEN RECORDING" }
+        Page {
+            key: "recording"
             Group {
                 SegRow {
                     label: "Resolution"
@@ -500,8 +693,10 @@ ColumnLayout {
                 font.family: Theme.fontText
                 wrapMode: Text.WordWrap
             }
+        }
 
-            SectionTitle { text: "BATTERY" }
+        Page {
+            key: "battery"
             Group {
                 Row {
                     icon: "battery-level-50-symbolic"
@@ -521,8 +716,10 @@ ColumnLayout {
                     onToggled: if (panel.store) panel.store.batteryBadgePercent = !panel.store.batteryBadgePercent
                 }
             }
+        }
 
-            SectionTitle { text: "NOTIFICATIONS & PRIVACY" }
+        Page {
+            key: "notifications"
             Group {
                 Row {
                     icon: "weather-clear-night-symbolic"
@@ -549,8 +746,10 @@ ColumnLayout {
                     onToggled: if (panel.store) panel.store.cameraIndicatorEnabled = !panel.store.cameraIndicatorEnabled
                 }
             }
+        }
 
-            SectionTitle { text: "CALCULATOR" }
+        Page {
+            key: "calculator"
             Group {
                 Row {
                     icon: "document-open-recent-symbolic"
@@ -561,8 +760,10 @@ ColumnLayout {
                     onToggled: if (panel.store) panel.store.calcHistoryAlways = !panel.store.calcHistoryAlways
                 }
             }
+        }
 
-            SectionTitle { text: "WEATHER" }
+        Page {
+            key: "weather"
             Group {
                 Row {
                     icon: "weather-showers-symbolic"
@@ -606,7 +807,8 @@ ColumnLayout {
                             font.family: Theme.fontText
                             selectByMouse: true
                             clip: true
-                            focus: panel.store ? panel.store.weatherManualLocation : false
+                            focus: panel.page === "weather" && panel.store ? panel.store.weatherManualLocation : false
+                            Keys.onEscapePressed: panel.page = ""
                             Component.onCompleted: text = panel.store ? panel.store.weatherCity : ""
                             onTextChanged: if (panel.store) panel.store.weatherCity = text
 
@@ -634,6 +836,7 @@ ColumnLayout {
                     wrapMode: Text.WordWrap
                 }
             }
+        }
         }
     }
 
