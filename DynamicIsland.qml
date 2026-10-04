@@ -1505,10 +1505,10 @@ PanelWindow {
         // pill is quicker than opening (user request); OSDs are short.
         // Opening 300 ms OutQuad (OutCubic covered most of the distance in
         // the first frames and panels seemed to pop out); closing into the
-        // pill 230 ms OutCubic; switching between panels 320 ms InOutCubic,
+        // pill 280 ms OutCubic; switching between panels 320 ms InOutCubic,
         // so the frame glides from one size to the other.
         readonly property int morphDuration: Theme.reduceMotion ? 120
-            : morphKind === "open" ? 300 : morphKind === "switch" ? 320 : morphKind === "osd" ? 200 : 230
+            : morphKind === "open" ? 300 : morphKind === "switch" ? 320 : morphKind === "osd" ? 200 : 280
         readonly property int morphEasing: morphKind === "open" ? Easing.OutQuad
             : morphKind === "switch" ? Easing.InOutCubic : Easing.OutCubic
         Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: notch.morphEasing } }
