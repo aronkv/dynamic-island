@@ -433,12 +433,16 @@ PanelWindow {
     // Drives the idle pill's "lyrics" now-playing mode (settingsStore.
     // idlePlayerMode === "lyrics") — same position-poll-timer pattern as the
     // media-expanded card's lyrics view, since MPRIS position isn't reactive.
+    // Only synced lyrics are shown — without timing there is no "current
+    // line", and plain lyrics used to dump the whole song into the pill.
+    // Otherwise the pill falls back to the "title — artist" text.
     property int idleLyricsLineIndex: -1
+    readonly property bool idleLyricsSynced: lyricsProvider.state === "synced"
     readonly property string idleLyricsText: {
-        if (lyricsProvider.state === "synced" && idleLyricsLineIndex >= 0 && idleLyricsLineIndex < lyricsProvider.syncedLines.length)
-            return lyricsProvider.syncedLines[idleLyricsLineIndex].text
-        if (lyricsProvider.state === "plain") return lyricsProvider.plainLyrics
-        return mprisMonitor.activePlayer ? mprisMonitor.activePlayer.trackTitle : ""
+        if (!idleLyricsSynced) return ""
+        const lines = lyricsProvider.syncedLines
+        const t = idleLyricsLineIndex >= 0 && idleLyricsLineIndex < lines.length ? lines[idleLyricsLineIndex].text.trim() : ""
+        return t !== "" ? t : "♪"   // before the first line / instrumental gap
     }
 
     Timer {
@@ -663,8 +667,8 @@ PanelWindow {
         triggeredOnStart: true
         running: island.displayState === "idle" && island.mediaPlaying && settingsStore.idlePlayerMode === "lyrics" && lyricsProvider.state === "synced"
         onTriggered: {
-            if (mprisMonitor.activePlayer) {
-                island.idleLyricsLineIndex = lyricsProvider.currentLineIndex(mprisMonitor.activePlayer.position)
+            if (mprisMonitor.anyPlayer) {
+                island.idleLyricsLineIndex = lyricsProvider.currentLineIndex(mprisMonitor.anyPlayer.position)
             }
         }
     }
@@ -1266,6 +1270,7 @@ PanelWindow {
         Connections {
             target: island
             function onDisplayStateChanged() {
+                notch.idleArrived = false
                 notch._floorW = notch.osdMorph && notch.width > notch.targetWidth ? notch.targetWidth : 0
                 notch._floorH = notch.osdMorph && notch.height > notch.targetHeight ? notch.targetHeight : 0
             }
@@ -1273,6 +1278,12 @@ PanelWindow {
         // True once the spring morph has (nearly) arrived — idle content
         // waits for this so it never appears inside a still-shrinking card.
         readonly property bool settled: Math.abs(width - targetWidth) < 90 && Math.abs(height - targetHeight) < 30
+        // Latches once idle has settled and stays true until the state
+        // changes, so idle→idle width changes (the pill springing to fit
+        // each lyric line) don't hide and re-fade the whole idle row.
+        property bool idleArrived: false
+        onSettledChanged: if (settled && island.displayState === "idle") idleArrived = true
+        Component.onCompleted: idleArrived = settled && island.displayState === "idle"
         readonly property real targetWidth: {
             switch (island.displayState) {
                 case "notification": return 380
@@ -1540,7 +1551,7 @@ PanelWindow {
             anchors.top: parent.top
             anchors.topMargin: 18 - height / 2
             spacing: 8
-            opacity: (island.displayState === "idle" && notch.settled && !island.workspaceActive && !(island.pillModeEffective === "strip" && !island.stripHovered) && !fileDropArea.containsDrag) ? 1 : 0
+            opacity: (island.displayState === "idle" && (notch.settled || notch.idleArrived) && !island.workspaceActive && !(island.pillModeEffective === "strip" && !island.stripHovered) && !fileDropArea.containsDrag) ? 1 : 0
             scale: island.displayState === "idle" ? 1 : 0.8
             visible: opacity > 0
 
@@ -1704,7 +1715,8 @@ PanelWindow {
                 }
 
                 Text {
-                    visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "title"
+                    visible: island.hasAnyPlayer && (settingsStore.idlePlayerMode === "title"
+                        || (settingsStore.idlePlayerMode === "lyrics" && !island.idleLyricsSynced))
                     text: {
                         const p = mprisMonitor.anyPlayer
                         if (!p) return ""
@@ -1718,14 +1730,45 @@ PanelWindow {
                     Layout.maximumWidth: 200
                 }
 
-                Text {
-                    visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "lyrics"
-                    text: island.idleLyricsText
-                    color: "#ffffff"
-                    font.pixelSize: 12
-                    font.family: "SF Pro Display"
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: 160
+                // Current synced line. The pill's width follows idleRow's
+                // implicitWidth (notch.targetWidth), so it springs to fit
+                // each line up to maxW; a longer line scrolls once (after a
+                // short pause) so its end is readable, then holds.
+                Item {
+                    id: lyricsBox
+                    visible: island.hasAnyPlayer && settingsStore.idlePlayerMode === "lyrics" && island.idleLyricsSynced
+                    readonly property real maxW: 360
+                    readonly property real overflow: Math.max(0, lyricLine.implicitWidth - maxW)
+                    implicitWidth: Math.min(lyricLine.implicitWidth, maxW)
+                    implicitHeight: lyricLine.implicitHeight
+                    Layout.preferredWidth: implicitWidth
+                    clip: true
+
+                    Text {
+                        id: lyricLine
+                        text: island.idleLyricsText
+                        color: "#ffffff"
+                        font.pixelSize: 12
+                        font.family: "SF Pro Display"
+                        onTextChanged: {
+                            marquee.stop()
+                            x = 0
+                            if (!Theme.reduceMotion) lineIn.restart()
+                            if (lyricsBox.overflow > 0 && lyricsBox.visible) marquee.restart()
+                        }
+                    }
+                    NumberAnimation { id: lineIn; target: lyricLine; property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
+                    SequentialAnimation {
+                        id: marquee
+                        PauseAnimation { duration: 900 }
+                        NumberAnimation {
+                            target: lyricLine
+                            property: "x"
+                            to: -lyricsBox.overflow
+                            duration: Math.max(600, lyricsBox.overflow * 22)
+                            easing.type: Easing.InOutSine
+                        }
+                    }
                 }
             }
         }
