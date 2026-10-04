@@ -156,9 +156,14 @@ Item {
     // can't work with non-legacy parsers"), so this uses `eval` with the
     // plugin's own Lua config call. Command assigned imperatively (see
     // CLAUDE.md: a bound command lags one change behind).
+    // The layer path is switched too: with only the global `enabled` off,
+    // hyprglass still processed the island's layer and put blurred
+    // wallpaper under its anti-aliased edges — light fringes along every
+    // curve over a dark fullscreen app (measured: gone with layers off).
     function applyBlur() {
+        const on = settingsStore.blurEnabled ? "true" : "false"
         blurProcess.command = ["hyprctl", "eval",
-            "if hl.plugin.hyprglass then hl.plugin.hyprglass.config({ enabled = " + (settingsStore.blurEnabled ? "true" : "false") + " }) end"]
+            "if hl.plugin.hyprglass then hl.plugin.hyprglass.config({ enabled = " + on + ", layers = { enabled = " + on + " } }) end"]
         blurProcess.running = true
     }
 
