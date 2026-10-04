@@ -1294,6 +1294,12 @@ PanelWindow {
         // changes, so idle→idle width changes (the pill springing to fit
         // each lyric line) don't hide and re-fade the whole idle row.
         property bool idleArrived: false
+        // The strip ↔ pill switch (fullscreen on/off, hovering the strip)
+        // stays in displayState "idle", so it must reset the latch too —
+        // otherwise the clock and cover showed, cut off, while the notch
+        // was still growing from the 10 px strip (seen frame by frame).
+        readonly property bool stripCollapsed: island.pillModeEffective === "strip" && !island.stripHovered
+        onStripCollapsedChanged: idleArrived = false
         onSettledChanged: if (settled && island.displayState === "idle") idleArrived = true
         Component.onCompleted: idleArrived = settled && island.displayState === "idle"
         // The plain idle pill's width ([cover] [clock] [cava]), used for
