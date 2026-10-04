@@ -872,6 +872,26 @@ PanelWindow {
         }
     }
 
+    // Ethernet cable plugged in / pulled → brief "Ethernet" pill
+    // (EthernetView). Same start-up guard as the charger, so the link state
+    // found at login doesn't announce itself.
+    property bool ethernetEventActive: false
+    property bool _ethernetReady: false
+    Timer { interval: 2500; running: true; onTriggered: island._ethernetReady = true }
+    Connections {
+        target: networkMonitor
+        function onEthernetConnectedChanged() {
+            if (!island._ethernetReady) return
+            island.ethernetEventActive = true
+            ethernetCollapseTimer.restart()
+        }
+    }
+    Timer {
+        id: ethernetCollapseTimer
+        interval: 2800
+        onTriggered: island.ethernetEventActive = false
+    }
+
     function showChargingAnimation() {
         island.chargingActive = true
         chargingCollapseTimer.restart()
@@ -900,6 +920,7 @@ PanelWindow {
         if (micMuteActive) return "micmute"
         if (capslockActive) return "capslock"
         if (chargingActive) return "charging"
+        if (ethernetEventActive) return "ethernet"
         if (lowBatteryActive) return "lowbattery"
         if (powerMenuOpen) return "power"
         if (launcherOpen) return "launcher"
@@ -1095,6 +1116,11 @@ PanelWindow {
             island.toggleOverviewView("wifi")
         }
         // Opens the Wi-Fi panel and toggles the password-share sheet (QR).
+        // Shows the Ethernet pill for the current link state (test hook).
+        function ethernetTest(): void {
+            island.ethernetEventActive = true
+            ethernetCollapseTimer.restart()
+        }
         function share(): void {
             quickOverviewPanel.activeView = "wifi"
             island.overviewPanelOpen = true
@@ -1416,6 +1442,7 @@ PanelWindow {
                 case "volume": return 300
                 case "brightness": return 300
                 case "charging": return 240
+                case "ethernet": return 250
                 case "lowbattery": return 260
                 case "power": return 520
                 case "launcher": return 540
@@ -1504,6 +1531,7 @@ PanelWindow {
                 case "volume": return 64
                 case "brightness": return 64
                 case "charging": return island.idleHeight
+                case "ethernet": return island.idleHeight
                 case "lowbattery": return island.idleHeight
                 case "power": return 196
                 case "launcher": return 470
@@ -2550,6 +2578,19 @@ PanelWindow {
             level: island.lowBatteryLevel
             shown: island.displayState === "lowbattery"
             lowPowerOn: PowerProfiles.profile === PowerProfile.PowerSaver
+            opacity: shown ? 1 : 0
+            scale: shown ? 1 : 0.8
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+        }
+
+        // Ethernet cable plugged in / pulled — see EthernetView.qml.
+        EthernetView {
+            anchors.fill: parent
+            shown: island.displayState === "ethernet"
+            connected: networkMonitor.ethernetConnected
+            iface: networkMonitor.wiredDevice ? networkMonitor.wiredDevice.name : ""
             opacity: shown ? 1 : 0
             scale: shown ? 1 : 0.8
             visible: opacity > 0
