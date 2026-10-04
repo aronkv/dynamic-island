@@ -428,9 +428,11 @@ PanelWindow {
             island.closeAllPanels()
             return
         }
-        if (!island.overviewPanelOpen) island.closeAllPanels()
+        const switching = island.overviewPanelOpen
+        if (!switching) island.closeAllPanels()
         island.mediaExpandedRequested = false
-        quickOverviewPanel.activeView = view
+        if (switching) quickOverviewPanel.switchTo(view)
+        else quickOverviewPanel.activeView = view
         island.overviewPanelOpen = true
     }
 
@@ -3196,9 +3198,10 @@ PanelWindow {
         // opening (~100 ms). The size follows the target only while the
         // overview is the morph state, so it keeps its last size while it
         // fades out on close.
-        // Sized imperatively: on a switch between sub-views the new size is
-        // applied only after the outgoing view has faded out (~90 ms), so it
-        // never visibly re-lays itself out at the incoming view's size.
+        // Sized imperatively, straight to the new view's size on a switch:
+        // the incoming view must lay out at its own size from its first
+        // frame (a delayed resize made it jump after 90 ms); the outgoing
+        // view fades out in 70 ms, too fast to notice its relayout.
         // When opening, the size is applied as soon as the overview is the
         // display state — inside the morph's start delay — so its first
         // layout happens before the frame starts to grow.
@@ -3206,21 +3209,8 @@ PanelWindow {
         readonly property real _overviewH: island.displayState === "overview" ? notch.heightFor("overview") : 0
         function _applyOverviewSize() {
             if (island.displayState !== "overview") return
-            if (notch.morphState === "overview" && quickOverviewPanel.width > 0) {
-                overviewSizeDelay.restart()
-            } else {
-                overviewSizeDelay.stop()
-                quickOverviewPanel.width = notch._overviewW
-                quickOverviewPanel.height = notch._overviewH
-            }
-        }
-        Timer {
-            id: overviewSizeDelay
-            interval: 90
-            onTriggered: {
-                quickOverviewPanel.width = notch._overviewW
-                quickOverviewPanel.height = notch._overviewH
-            }
+            quickOverviewPanel.width = notch._overviewW
+            quickOverviewPanel.height = notch._overviewH
         }
         Connections {
             target: notch
