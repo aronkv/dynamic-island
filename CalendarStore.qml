@@ -4,7 +4,7 @@ import QtQuick
 
 // Local calendar reminders in ~/.config/quickshell/calendar.json:
 //   { "reminders": [{ id, title, date: "YYYY-MM-DD", time: "HH:MM"|"", fired }] }
-// Saves are debounced (see CLAUDE.md, FileView re-read race). A 30 s timer
+// Saves are debounced (FileView re-read race). A 30 s timer
 // fires due reminders through notify-send — the island's own notification
 // server then shows them. All-day reminders fire at 09:00. Reminders more
 // than 12 h overdue at startup are marked fired silently (no flood after a

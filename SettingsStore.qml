@@ -154,8 +154,8 @@ Item {
 
     // `hyprctl keyword` is rejected by this Lua-config Hyprland ("keyword
     // can't work with non-legacy parsers"), so this uses `eval` with the
-    // plugin's own Lua config call. Command assigned imperatively (see
-    // CLAUDE.md: a bound command lags one change behind).
+    // plugin's own Lua config call. Command assigned imperatively
+    // (a bound command lags one change behind).
     // The layer path is switched too: with only the global `enabled` off,
     // hyprglass still processed the island's layer and put blurred
     // wallpaper under its anti-aliased edges — light fringes along every

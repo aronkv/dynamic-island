@@ -107,7 +107,7 @@ Item {
     // WifiNetwork type exposes no such method (confirmed against its real
     // qmltypes: connect/disconnect/connectWithPsk only, nothing that deletes
     // a saved profile), so this shells out to `nmcli connection delete`.
-    // Argv-list, not `sh -c` (CLAUDE.md's Process security convention) —
+    // Argv-list, not `sh -c` —
     // an SSID is untrusted/arbitrary text as far as this code is concerned,
     // so it must never be interpolated into a shell string. NetworkManager
     // names a Wi-Fi connection profile after its SSID by default (confirmed
@@ -131,7 +131,7 @@ Item {
     // way to touch a saved profile's secrets at all, so this shells out to
     // `nmcli connection modify` (the field is `802-11-wireless-security.psk`,
     // confirmed live — nmcli's own `wifi-sec.psk` alias doesn't exist).
-    // Argv-list, not `sh -c` (CLAUDE.md's Process security convention) — the
+    // Argv-list, not `sh -c` — the
     // new password is untrusted, arbitrary text and must never be
     // interpolated into a shell string. Re-brings the connection up
     // afterward so a currently-connected network picks up the change

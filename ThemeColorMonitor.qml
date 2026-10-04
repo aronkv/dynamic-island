@@ -68,7 +68,7 @@ Item {
     }
 
     // `command` is computed here from the already-current value (a bound
-    // command lags one change behind — see CLAUDE.md).
+    // command lags one change behind).
     onActiveBorderColorChanged: _queue("active", ["hyprctl", "eval",
         "hl.config({general={col={active_border={colors={\"rgba(" + activeBorderColor + ")\"}}}}})"])
     onInactiveBorderColorChanged: _queue("inactive", ["hyprctl", "eval",

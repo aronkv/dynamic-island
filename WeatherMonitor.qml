@@ -196,7 +196,7 @@ Item {
     // Extended forecast (Rice Phase 3): current conditions + next 24 h +
     // 7 days in one request. `command` is assigned imperatively in
     // fetchWeather() — a declarative binding on _lat/_lon lags one change
-    // behind (see CLAUDE.md), which could fetch the previous location.
+    // behind, which could fetch the previous location.
     readonly property var current: _current          // raw open-meteo `current` block
     readonly property var hourly: _hourly            // [{time, temp, code, isDay, precip}] × 24
     readonly property var daily: _daily              // [{date, code, max, min, sunrise, sunset, uvMax, precipMax}] × 7

@@ -196,7 +196,7 @@ Item {
         command: ["pw-play", "/usr/share/sounds/freedesktop/stereo/complete.oga"]
     }
 
-    // Persistence (debounced — see CLAUDE.md).
+    // Persistence (debounced: writeAdapter re-reads the file).
     FileView {
         id: file
         path: Quickshell.shellDir + "/activity.json"

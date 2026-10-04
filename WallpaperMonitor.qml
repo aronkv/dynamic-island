@@ -107,8 +107,7 @@ Item {
         // broke persistence last time (an indentation-sensitive anchor
         // silently never matching). `sh -c` with the path passed as a
         // positional parameter ($1), not interpolated into the script
-        // text, keeps this safe for an arbitrary/untrusted path (CLAUDE.md's
-        // Process-security convention) while still letting a shell do the
+        // text, keeps this safe for an arbitrary/untrusted path while still letting a shell do the
         // file redirection `printf` alone can't.
         rewriteConfProc.command = ["sh", "-c",
             'printf "wallpaper {\\n    monitor = eDP-1\\n    path = %s\\n    fit_mode = cover\\n}\\nsplash = false\\n" "$1" > "$2"',

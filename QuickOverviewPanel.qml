@@ -240,7 +240,7 @@ Item {
     // from the whole panel chrome): a plain white circle with a "‹" glyph,
     // no icon file involved (reuses the same "‹" character the old text
     // link already rendered, just restyled, rather than risking another
-    // Adwaita icon with the raster/filter hazard documented in CLAUDE.md).
+    // Adwaita icon with the raster/filter rendering hazard).
     component BackButton: Item {
         id: backBtn
         signal clicked()

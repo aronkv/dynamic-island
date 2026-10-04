@@ -30,7 +30,7 @@ PanelWindow {
     // entire point of a stable reservation. ExclusionMode.Auto was
     // considered but rejected: it computes the zone from the actual Wayland
     // surface's own size, which is a fixed 520x340 in this project's
-    // architecture (only the inner notch Rectangle animates, per CLAUDE.md)
+    // architecture (only the inner notch Rectangle animates)
     // — Auto would reserve the full 340px height, not the visually-idle
     // ~36px. Normal + an explicit exclusiveZone is the only combination
     // that reserves just the idle size.
@@ -3111,7 +3111,7 @@ PanelWindow {
                         font.family: "SF Pro Display"
                         wrapMode: Text.WordWrap
                         horizontalAlignment: Text.AlignLeft
-                        // Only opacity animates (never font size — see CLAUDE.md).
+                        // Only opacity animates (never font size: it reflows wrapped lines).
                         Behavior on opacity { enabled: !lyricsView.snapping; NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
                     }
                 }

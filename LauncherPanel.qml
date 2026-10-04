@@ -39,7 +39,7 @@ FocusScope {
         list.positionViewAtBeginning()
         fileRows = []
         // Computed from `query` directly: the `fileSearch` binding can still
-        // hold its old value inside this handler (see CLAUDE.md).
+        // hold its old value inside this handler.
         const q = query.trim()
         if (q.length >= 3 && !/^[:?]/.test(q)) fileTimer.restart()
     }
@@ -57,7 +57,7 @@ FocusScope {
             property var favorites: []
         }
     }
-    // Debounced save (see CLAUDE.md: writeAdapter re-reads the file).
+    // Debounced save (writeAdapter re-reads the file).
     Timer { id: saveTimer; interval: 200; onTriggered: historyFile.writeAdapter() }
 
     function bump(id) {

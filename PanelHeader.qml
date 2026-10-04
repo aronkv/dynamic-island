@@ -44,8 +44,7 @@ Item {
     implicitHeight: showIdentity ? Math.max(mainIconBadge.height, titleColumn.implicitHeight, iconCluster.implicitHeight, toggleSwitch.implicitHeight)
         : Math.max(titleColumn.implicitHeight, iconCluster.implicitHeight, toggleSwitch.implicitHeight)
 
-    // Flat-fill-via-alpha-mask icon rendering (see CLAUDE.md's icon
-    // recoloring pattern) — colorization blends toward the target color
+    // Flat-fill-via-alpha-mask icon rendering — colorization blends toward the target color
     // proportional to the source glyph's own luminance rather than fully
     // replacing it, so a dark icon-theme SVG never reaches a true flat
     // color at colorization: 1.0. Masking a solid Rectangle with the icon's

@@ -16,8 +16,8 @@ import QtQuick
 // confirmed via the installed qmltypes; QtNetwork's own qmltypes expose no
 // UDP type either, only SslSocket/TCP) — so this shells out to small Python
 // helper scripts (localsend_discover.py, localsend_send.py,
-// localsend_server.py, all alongside this file) via Process, matching
-// CLAUDE.md's justified-helper-script convention (no interpolated/dynamic
+// localsend_server.py, all alongside this file) via Process, as a
+// fixed helper script (no interpolated/dynamic
 // data in the command, so this is safe as a plain argv-list launch of a
 // fixed script path).
 Item {
@@ -180,8 +180,7 @@ Item {
     // straightforward in Python's stdlib and awkward to compose correctly
     // and safely from multiple shelled-out curl invocations. Launched via a
     // fixed argv list (script path + plain arguments, no shell), so a
-    // hostile filename/device alias in argv is never a shell-injection risk
-    // per CLAUDE.md's Process security convention.
+    // hostile filename/device alias in argv is never a shell-injection risk.
     property string sendStatus: "" // "" | "sending" | "success" | "error"
     property string sendErrorMessage: ""
 

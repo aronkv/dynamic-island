@@ -5,7 +5,7 @@ import QtQuick
 // brightness so the result is the cover's "accent", not a muddy average.
 // The color is then lifted to a minimum brightness so it reads on black.
 // The Canvas must stay rendered to paint (a Canvas that isn't visible never
-// gets onPaint — see CLAUDE.md), so it sits at 1% opacity, 16px, out of the way.
+// gets onPaint), so it sits at 1% opacity, 16px, out of the way.
 // A cover that is already in the Canvas image cache never re-fires
 // imageLoaded (going back a track), so sourceChanged paints directly in that
 // case, and every computed color is cached per URL so repeats are instant.

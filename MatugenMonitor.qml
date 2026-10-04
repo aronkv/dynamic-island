@@ -33,8 +33,7 @@ import QtQuick
 // `--source-color-index 0` is required for `image` mode: without it an
 // image with multiple candidate dominant colors opens an interactive
 // picker prompt on stdin, which would hang a non-interactive Process
-// call. Argv-list commands throughout (CLAUDE.md Process-security
-// convention) — the wallpaper path/seed hex never goes through a shell.
+// call. Argv-list commands throughout — the wallpaper path/seed hex never goes through a shell.
 Item {
     id: matugenMonitor
 

@@ -39,7 +39,7 @@ Item {
             property int unread: 0
         }
     }
-    // Debounced (writeAdapter re-reads the file — see CLAUDE.md).
+    // Debounced (writeAdapter re-reads the file).
     Timer { id: saveTimer; interval: 300; onTriggered: file.writeAdapter() }
     function _persist() {
         adapter.items = store.items

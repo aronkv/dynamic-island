@@ -238,7 +238,7 @@ Item {
     }
 
     // Transport button: symbolic Adwaita icon recolored through a mask
-    // (threshold 0.5, no spread — see CLAUDE.md). The play/pause one sits in
+    // (threshold 0.5, no spread). The play/pause one sits in
     // a white disc with a dark glyph; the others get a faint hover circle.
     component LockMediaButton: Item {
         id: btn

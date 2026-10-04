@@ -3,8 +3,8 @@
 # github.com/localsend/protocol's real README.md — group/port below are the
 # documented defaults, not guessed). No QML/Quickshell.Io primitive exists
 # for a raw UDP datagram socket (Quickshell.Io.Socket wraps QLocalSocket,
-# Unix-domain only), so this is shelled out to as a Process, matching
-# CLAUDE.md's justified-helper-script convention. Prints one JSON line per
+# Unix-domain only), so this is shelled out to as a Process, as a
+# fixed helper script. Prints one JSON line per
 # announcement received, unbuffered, for a Quickshell SplitParser to consume.
 import json
 import os
