@@ -292,7 +292,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
         IslandHeaderRow {
@@ -398,7 +398,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -427,7 +427,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -456,7 +456,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -492,7 +492,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -521,7 +521,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -550,7 +550,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -578,7 +578,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -606,7 +606,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -636,7 +636,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -664,7 +664,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
 
@@ -692,7 +692,7 @@ Item {
         }
         visible: opacity > 0
 
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        FadeBehavior on opacity {}
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
         TrayPanel {

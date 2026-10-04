@@ -1307,25 +1307,52 @@ PanelWindow {
         // Light states (OSDs, banners, collapsing) follow immediately.
         property string morphState: island.displayState
         readonly property var _heavyStates: ["overview", "mediaExpanded", "launcher", "clipboard", "notifications", "activity", "system", "power", "localsend"]
+        readonly property var _osdStates: ["volume", "brightness", "capslock", "micmute"]
+        // What kind of morph is about to run: "open" (pill → panel),
+        // "close" (→ pill), "switch" (panel → another panel or sub-view),
+        // "osd", or "idle" (pill ↔ pill, e.g. a lyric line's width). Set
+        // imperatively *before* morphState changes, so both axes' Behaviors
+        // read the same, current value when they start — a binding could
+        // still hold its old value then, and the height once ran on the
+        // open timing while the width used the close timing (a tall narrow
+        // box lingering on close, seen in a recording).
+        property string morphKind: "idle"
+        function _kindFor(from, to) {
+            if (_osdStates.indexOf(to) !== -1 || _osdStates.indexOf(from) !== -1) return "osd"
+            if (to === "idle") return from === "idle" ? "idle" : "close"
+            if (from === "idle") return "open"
+            return "switch"
+        }
+        function _setMorph(st) {
+            notch.morphKind = notch._kindFor(notch.morphState, st)
+            notch.morphState = st
+        }
         Connections {
             target: island
             function onDisplayStateChanged() {
                 const st = island.displayState
-                if (notch._heavyStates.indexOf(st) !== -1 && notch._heavyStates.indexOf(notch.morphState) === -1 && !Theme.reduceMotion) {
+                if (notch._heavyStates.indexOf(st) !== -1 && notch.morphState === "idle" && !Theme.reduceMotion) {
                     morphDelay.restart()
                 } else {
                     morphDelay.stop()
-                    notch.morphState = st
+                    notch._setMorph(st)
                 }
             }
         }
+        // A sub-view change inside the open overview (Settings → Battery)
+        // only changes the target size, not the state.
+        Connections {
+            target: quickOverviewPanel
+            function onActiveViewChanged() { if (notch.morphState === "overview") notch.morphKind = "switch" }
+        }
         Timer {
             id: morphDelay
-            interval: 50
-            onTriggered: notch.morphState = island.displayState
+            interval: 33
+            onTriggered: notch._setMorph(island.displayState)
         }
-        readonly property real targetWidth: {
-            switch (notch.morphState) {
+        readonly property real targetWidth: widthFor(notch.morphState)
+        function widthFor(state) {
+            switch (state) {
                 case "notification": return 380
                 case "mediaExpanded": return island.mediaCardWidth
                 case "overview":
@@ -1381,8 +1408,9 @@ PanelWindow {
                     return idleRow.implicitWidth + 36
             }
         }
-        readonly property real targetHeight: {
-            switch (notch.morphState) {
+        readonly property real targetHeight: heightFor(notch.morphState)
+        function heightFor(state) {
+            switch (state) {
                 // 300 (original, header-less) + ~36 for the header row and
                 // its spacing (24px row + 12px spacing) — the wifi/bluetooth
                 // status row that briefly lived here as a separate row was
@@ -1475,17 +1503,14 @@ PanelWindow {
         // in ~80 ms. A fixed-duration OutCubic grows at a readable pace and
         // ends exactly on time, never past the target. Collapsing into the
         // pill is quicker than opening (user request); OSDs are short.
-        // Growing (opening) vs shrinking (back into the pill), decided from
-        // the live size against the target at the moment the animation
-        // starts. A property keyed on the state could still hold its old
-        // value when the Behavior read it (binding order), and the battery
-        // panel then opened with the 180 ms collapse timing.
-        readonly property bool growing: targetHeight >= height - 1 && targetWidth >= width - 1
-        readonly property int morphDuration: Theme.reduceMotion ? 120 : osdMorph ? 200 : growing ? 400 : 180
-        // Opening uses OutQuad: OutCubic covered most of the distance in the
-        // first frames and the panels seemed to pop out (user feedback).
-        // Collapsing keeps the snappier OutCubic.
-        readonly property int morphEasing: growing && !osdMorph ? Easing.OutQuad : Easing.OutCubic
+        // Opening 300 ms OutQuad (OutCubic covered most of the distance in
+        // the first frames and panels seemed to pop out); closing into the
+        // pill 230 ms OutCubic; switching between panels 320 ms InOutCubic,
+        // so the frame glides from one size to the other.
+        readonly property int morphDuration: Theme.reduceMotion ? 120
+            : morphKind === "open" ? 300 : morphKind === "switch" ? 320 : morphKind === "osd" ? 200 : 230
+        readonly property int morphEasing: morphKind === "open" ? Easing.OutQuad
+            : morphKind === "switch" ? Easing.InOutCubic : Easing.OutCubic
         Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: notch.morphEasing } }
         Behavior on animH { NumberAnimation { duration: notch.morphDuration; easing.type: notch.morphEasing } }
 
@@ -3171,19 +3196,36 @@ PanelWindow {
         // opening (~100 ms). The size follows the target only while the
         // overview is the morph state, so it keeps its last size while it
         // fades out on close.
-        Binding {
-            target: quickOverviewPanel
-            property: "width"
-            value: notch.targetWidth
-            when: notch.morphState === "overview"
-            restoreMode: Binding.RestoreNone
+        // Sized imperatively: on a switch between sub-views the new size is
+        // applied only after the outgoing view has faded out (~90 ms), so it
+        // never visibly re-lays itself out at the incoming view's size.
+        // When opening, the size is applied as soon as the overview is the
+        // display state — inside the morph's start delay — so its first
+        // layout happens before the frame starts to grow.
+        readonly property real _overviewW: island.displayState === "overview" ? notch.widthFor("overview") : 0
+        readonly property real _overviewH: island.displayState === "overview" ? notch.heightFor("overview") : 0
+        function _applyOverviewSize() {
+            if (island.displayState !== "overview") return
+            if (notch.morphState === "overview" && quickOverviewPanel.width > 0) {
+                overviewSizeDelay.restart()
+            } else {
+                overviewSizeDelay.stop()
+                quickOverviewPanel.width = notch._overviewW
+                quickOverviewPanel.height = notch._overviewH
+            }
         }
-        Binding {
-            target: quickOverviewPanel
-            property: "height"
-            value: notch.targetHeight
-            when: notch.morphState === "overview"
-            restoreMode: Binding.RestoreNone
+        Timer {
+            id: overviewSizeDelay
+            interval: 90
+            onTriggered: {
+                quickOverviewPanel.width = notch._overviewW
+                quickOverviewPanel.height = notch._overviewH
+            }
+        }
+        Connections {
+            target: notch
+            function on_OverviewWChanged() { notch._applyOverviewSize() }
+            function on_OverviewHChanged() { notch._applyOverviewSize() }
         }
         QuickOverviewPanel {
             id: quickOverviewPanel
