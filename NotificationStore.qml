@@ -25,7 +25,11 @@ Item {
         watchChanges: false
         onAdapterUpdated: saveTimer.restart()
         onLoaded: {
-            store.items = adapter.items || []
+            // image://qsimage/<n>/… handles belong to the process that got
+            // the notification: after a restart they fail to load ("unknown
+            // handle") or, worse, point at another notification's image.
+            store.items = (adapter.items || []).map(it => (it.picture || "").startsWith("image://qsimage/")
+                ? Object.assign({}, it, { picture: "" }) : it)
             store.unread = adapter.unread || 0
             store._seq = store.items.reduce((m, it) => Math.max(m, it.uid || 0), 0)
         }
@@ -115,6 +119,12 @@ Item {
     }
 
     function isLive(uid) { return _live[uid] !== undefined }
+    // Thumbnail to show for a history entry: an image://qsimage/ handle only
+    // works while its notification object is still alive.
+    function pictureOf(item) {
+        const p = item ? (item.picture || "") : ""
+        return p.startsWith("image://qsimage/") && !isLive(item.uid) ? "" : p
+    }
 
     // Default action if the app still listens, then drop it from the list.
     function activate(uid) {
