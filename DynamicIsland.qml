@@ -1450,7 +1450,7 @@ PanelWindow {
         // ends exactly on time, never past the target. Collapsing into the
         // pill is quicker than opening (user request); OSDs are short.
         readonly property int morphDuration: Theme.reduceMotion ? 120 : osdMorph ? 200
-            : island.displayState === "idle" ? 230 : 360
+            : island.displayState === "idle" ? 180 : 360
         Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
         Behavior on animH { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
 
