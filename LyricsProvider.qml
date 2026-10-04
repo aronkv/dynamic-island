@@ -191,7 +191,11 @@ Item {
             onTextChanged: {
                 let data = null
                 try { data = JSON.parse(text) } catch (e) {}
-                if (data && data.instrumental) { lyricsProvider._onlineState = "notFound"; return }
+                // An "instrumental" exact match isn't trusted on its own: lrclib
+                // has wrong flags (Hole – Petals, Celebrity Skin, 329 s is marked
+                // instrumental while the same recording has synced lyrics under
+                // another album name), so it falls through to the search below;
+                // no timed candidate there → "No lyrics found" as before.
                 if (data && data.syncedLyrics) {
                     const lines = lyricsProvider.parseLrc(data.syncedLyrics)
                     if (lines.length > 0) {
