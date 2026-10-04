@@ -30,10 +30,13 @@ Singleton {
     readonly property int radiusMedium: 12
     readonly property int radiusLarge: 18
 
-    // Motion. Island morph uses a spring (slight overshoot, like the iPhone
-    // island); content fades use a short ease-out.
-    readonly property real springStiffness: 3.2
-    readonly property real springDamping: 0.3
+    // Motion. Island morph uses a critically damped spring: it eases in and
+    // settles without overshoot. The earlier 0.3 damping overshot a few px
+    // and pulled back at the end of every open — a visible "jump" (measured
+    // on a recording: the media card went 470 px wide, then back to 459).
+    // Content fades use a short ease-out.
+    readonly property real springStiffness: 8
+    readonly property real springDamping: 1.0
     readonly property int fadeDuration: 220
     readonly property int contentScaleDuration: 380
     readonly property int panelSlide: 36
