@@ -722,7 +722,9 @@ PanelWindow {
         interval: 500
         repeat: true
         triggeredOnStart: true
-        running: island.displayState === "idle" && island.mediaPlaying && settingsStore.idlePlayerMode === "lyrics" && lyricsProvider.state === "synced"
+        // Also while paused: after a restart or a seek the pill otherwise
+        // kept showing ♪ until playback resumed.
+        running: island.displayState === "idle" && island.hasAnyPlayer && settingsStore.idlePlayerMode === "lyrics" && lyricsProvider.state === "synced"
         onTriggered: {
             if (mprisMonitor.anyPlayer) {
                 island.idleLyricsLineIndex = lyricsProvider.currentLineIndex(mprisMonitor.anyPlayer.position)
@@ -1936,7 +1938,8 @@ PanelWindow {
                 Item {
                     id: lyricsBox
                     visible: island.idleMediaMode === "lyrics"
-                    readonly property real maxW: 380
+                    // 300 px keeps the pill clear of the badges beside it.
+                    readonly property real maxW: 300
                     readonly property real overflow: Math.max(0, lyricLine.implicitWidth - maxW)
                     implicitWidth: Math.min(lyricLine.implicitWidth, maxW)
                     implicitHeight: lyricLine.implicitHeight
@@ -1967,6 +1970,30 @@ PanelWindow {
                             to: -lyricsBox.overflow
                             duration: Math.max(600, lyricsBox.overflow * 22)
                             easing.type: Easing.InOutSine
+                        }
+                    }
+                    // Soft edges while a long line scrolls: the text faded
+                    // into the pill's black instead of being cut mid-letter.
+                    Rectangle {
+                        anchors.left: parent.left
+                        width: 18
+                        height: parent.height
+                        visible: lyricLine.x < -0.5
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: "#000000" }
+                            GradientStop { position: 1; color: "transparent" }
+                        }
+                    }
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 18
+                        height: parent.height
+                        visible: lyricLine.x + lyricLine.implicitWidth > lyricsBox.width + 0.5
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: "transparent" }
+                            GradientStop { position: 1; color: "#000000" }
                         }
                     }
                 }
