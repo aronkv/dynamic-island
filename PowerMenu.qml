@@ -7,11 +7,11 @@ import QtQuick.Effects
 import QtQuick.Shapes
 
 // Power menu (displayState "power"): 1 Lock · 2 Sleep · 3 Log Out ·
-// 4 Restart · 5 Shut Down. Nothing runs on a tap: hold the number key (or
+// 4 Restart · 5 Shut Down · 6 Restart to BIOS (firmware setup). Nothing runs on a tap: hold the number key (or
 // press-and-hold the button, or hold Enter on the selected one) and a ring
 // fills around it; when it completes (~0.9 s) the action runs. Letting go
 // early cancels and the ring drains back.
-// Keyboard: 1–5 hold, ←/→ select, Enter hold, Esc closes.
+// Keyboard: 1–6 hold, ←/→ select, Enter hold, Esc closes.
 FocusScope {
     id: menu
     property bool active: false
@@ -28,7 +28,8 @@ FocusScope {
         { key: "sleep",    label: "Sleep",     icon: "weather-clear-night-symbolic", danger: false },
         { key: "logout",   label: "Log Out",   icon: "system-log-out-symbolic",      danger: true },
         { key: "reboot",   label: "Restart",   icon: "system-reboot-symbolic",       danger: true },
-        { key: "poweroff", label: "Shut Down", icon: "system-shutdown-symbolic",     danger: true }
+        { key: "poweroff", label: "Shut Down", icon: "system-shutdown-symbolic",     danger: true },
+        { key: "bios",     label: "BIOS",      icon: "application-x-firmware-symbolic", danger: true }
     ]
 
     onActiveChanged: {
@@ -85,7 +86,8 @@ FocusScope {
         const cmds = {
             logout: ["hyprctl", "dispatch", "hl.dsp.exit()"],
             reboot: ["systemctl", "reboot"],
-            poweroff: ["systemctl", "poweroff"]
+            poweroff: ["systemctl", "poweroff"],
+            bios: ["systemctl", "reboot", "--firmware-setup"]
         }
         actionProc.command = cmds[key]
         actionProc.running = true
@@ -176,14 +178,41 @@ FocusScope {
                     Layout.fillWidth: true
                     implicitHeight: 92
 
+                    // Hover/press live on the whole slot, NOT inside `btn`:
+                    // btn scales on focus, and a MouseArea inside a scaling
+                    // item grows/shrinks its own hit area, so at the edge
+                    // entered/exited fired back and forth (the flicker).
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: if (menu.holdIndex === -1) menu.currentIndex = slot.index
+                        onPressed: menu.startHold(slot.index)
+                        onReleased: menu.endHold(slot.index)
+                        onCanceled: menu.endHold(slot.index)
+                        onExited: if (pressed) menu.endHold(slot.index)
+                    }
+
                     Item {
                         id: btn
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 2
                         width: 58
                         height: 58
-                        scale: slot.holding ? 0.92 + 0.08 * (1 - slot.progress) : (slot.focused ? 1.05 : 1)
-                        Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                        scale: slot.holding ? 0.92 + 0.08 * (1 - slot.progress) : (slot.focused ? 1.04 : 1)
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+                        // Soft focus ring around the selected button.
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            radius: width / 2
+                            color: "transparent"
+                            border.width: 1.5
+                            border.color: Qt.rgba(1, 1, 1, 0.35)
+                            opacity: slot.focused && slot.progress === 0 ? 1 : 0
+                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160 } }
+                        }
 
                         Rectangle {
                             anchors.fill: parent
@@ -260,38 +289,46 @@ FocusScope {
                             height: 18
                             radius: 9
                             color: slot.focused ? "#ffffff" : Theme.cardElevated
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             Text {
                                 anchors.centerIn: parent
                                 text: slot.index + 1
                                 color: slot.focused ? "#000000" : "#ffffff"
+                                Behavior on color { ColorAnimation { duration: 150 } }
                                 font.pixelSize: 10
                                 font.weight: 700
                                 font.family: Theme.fontText
                             }
                         }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: if (menu.holdIndex === -1) menu.currentIndex = slot.index
-                            onPressed: menu.startHold(slot.index)
-                            onReleased: menu.endHold(slot.index)
-                            onCanceled: menu.endHold(slot.index)
-                            onExited: if (pressed) menu.endHold(slot.index)
-                        }
                     }
 
-                    Text {
+                    // Label cross-fades to "Hold…" while holding.
+                    Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: btn.bottom
                         anchors.topMargin: 10
-                        text: slot.holding ? "Hold…" : slot.modelData.label
-                        color: slot.holding && slot.modelData.danger ? Theme.red : "#ffffff"
-                        opacity: slot.focused || slot.holding ? 1 : 0.6
-                        font.pixelSize: 11
-                        font.weight: 600
-                        font.family: Theme.fontText
+                        width: parent.width
+                        height: 14
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: slot.modelData.label
+                            color: "#ffffff"
+                            opacity: slot.holding ? 0 : (slot.focused ? 1 : 0.6)
+                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 150 } }
+                            font.pixelSize: 11
+                            font.weight: 600
+                            font.family: Theme.fontText
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Hold…"
+                            color: slot.modelData.danger ? Theme.red : "#ffffff"
+                            opacity: slot.holding ? 1 : 0
+                            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 150 } }
+                            font.pixelSize: 11
+                            font.weight: 600
+                            font.family: Theme.fontText
+                        }
                     }
                 }
             }
@@ -299,7 +336,7 @@ FocusScope {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "Hold 1–5 (or press and hold a button) to confirm"
+            text: "Hold 1–6 (or press and hold a button) to confirm"
             color: "#ffffff"
             opacity: 0.35
             font.pixelSize: 10
