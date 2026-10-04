@@ -1433,7 +1433,10 @@ PanelWindow {
         // Critically damped for OSDs: with any undershoot the notch dipped
         // below the OSD's size and the slider (whose scale follows the
         // notch) visibly shrank and popped back — the "jump".
-        readonly property real morphSpring: Theme.reduceMotion ? 12 : osdMorph ? 9 : Theme.springStiffness
+        // Collapsing back into the pill uses a stiffer spring: closing a
+        // panel felt slow at the opening's pace (user request).
+        readonly property real morphSpring: Theme.reduceMotion ? 12 : osdMorph ? 9
+            : island.displayState === "idle" ? 22 : Theme.springStiffness
         readonly property real morphDamping: Theme.reduceMotion ? 1 : osdMorph ? 1 : Theme.springDamping
         Behavior on animW { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }
         Behavior on animH { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }

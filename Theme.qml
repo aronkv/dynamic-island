@@ -35,7 +35,7 @@ Singleton {
     // and pulled back at the end of every open — a visible "jump" (measured
     // on a recording: the media card went 470 px wide, then back to 459).
     // Content fades use a short ease-out.
-    readonly property real springStiffness: 8
+    readonly property real springStiffness: 14
     readonly property real springDamping: 1.0
     readonly property int fadeDuration: 220
     readonly property int contentScaleDuration: 380
