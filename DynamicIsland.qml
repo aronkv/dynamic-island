@@ -908,9 +908,21 @@ PanelWindow {
     // different route (e.g. clicking the idle island after having drilled
     // into Battery and closed from there) would jump straight back into
     // that stale sub-view instead of the plain root.
+    // Back to the root view only once the panel has faded out: resetting
+    // on close made the root (clock, Ethernet/Bluetooth tiles) slide in over
+    // the closing Wi-Fi / Bluetooth / Shortcuts view, so their text seemed
+    // to vanish oddly (seen frame by frame in a recording).
     onOverviewPanelOpenChanged: {
-        if (!overviewPanelOpen) quickOverviewPanel.activeView = "overview"
-        else { powerMenuOpen = false; launcherOpen = false; clipboardOpen = false; notificationsOpen = false; activityOpen = false; systemOpen = false }
+        if (!overviewPanelOpen) overviewResetTimer.restart()
+        else {
+            overviewResetTimer.stop()
+            powerMenuOpen = false; launcherOpen = false; clipboardOpen = false; notificationsOpen = false; activityOpen = false; systemOpen = false
+        }
+    }
+    Timer {
+        id: overviewResetTimer
+        interval: 400
+        onTriggered: if (!island.overviewPanelOpen) quickOverviewPanel.activeView = "overview"
     }
 
     // Fixed window size: the actual Wayland surface never resizes, only the
