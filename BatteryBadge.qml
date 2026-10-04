@@ -1,10 +1,11 @@
 import QtQuick
+import QtQuick.Effects
 
 // Battery level beside the pill (idleBadgeLeft), shown while on battery
 // when Settings → Battery → "Battery outside the pill" is on — and always
 // at ≤ 10 %, then with the minutes left until empty; ChargeBadge takes
-// over while plugged in. No background: like ChargeBadge's bolt, the
-// glyph and text sit on the wallpaper with a soft dark halo. The level
+// over while plugged in. No background: the glyph and text sit on the
+// wallpaper over soft dark shadows. The level
 // fill tracks the charge; iOS colors: red at ≤ 10 %, yellow while Power
 // Saver is on, white otherwise. The percentage can sit next to the glyph
 // or, iOS 16 style, inside a larger glyph (`percentInside`), dark over the
@@ -80,45 +81,28 @@ Item {
         anchors.rightMargin: badge.rightInset
 
         // ── Halo ──
-        // Glyph: concentric rounded-rect rings growing outward, each fainter
-        // — a smooth falloff with no lobes (offset copies of the outline
-        // left visible steps on the straight edges).
-        Repeater {
-            model: 6
-            Rectangle {
-                required property int index
-                readonly property real grow: index + 1
-                x: badge.glyphX - grow
-                y: badge.glyphTop - grow
-                width: badge.bodyW + 4 + grow * 2      // + the nub
-                height: badge.bodyH + grow * 2
-                radius: badge.cornerR + grow
-                color: "transparent"
-                border.width: 1.2
-                border.color: Qt.rgba(0, 0, 0, 0.11 - index * 0.017)
-            }
+        // Real soft shadows: RectangularShadow is a single shader item (no
+        // offscreen layer, unlike MultiEffect's shadow, whose layer came
+        // back as a grey box after a fullscreen game). One hugs the glyph
+        // (body + nub), one sits behind the text as a soft pill.
+        RectangularShadow {
+            x: badge.glyphX
+            y: badge.glyphTop
+            width: badge.bodyW + 4
+            height: badge.bodyH
+            radius: badge.cornerR
+            blur: 7
+            color: Qt.rgba(0, 0, 0, 0.45)
         }
-        // Text: faint dark copies on two tight rings × 16 directions
-        // (stroking glyph outlines that wide renders spiky artefacts).
-        readonly property var textHalo: {
-            const out = []
-            const rings = [{ r: 2.2, a: 0.03 }, { r: 1.1, a: 0.05 }]
-            for (const ring of rings)
-                for (let k = 0; k < 16; k++)
-                    out.push({ dx: ring.r * Math.cos(k * Math.PI / 8), dy: ring.r * Math.sin(k * Math.PI / 8), a: ring.a })
-            return out
-        }
-        Repeater {
-            model: badge.label !== "" ? box.textHalo : []
-            Text {
-                required property var modelData
-                x: modelData.dx
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: modelData.dy
-                text: badge.label
-                color: Qt.rgba(0, 0, 0, modelData.a)
-                font: metrics.font
-            }
+        RectangularShadow {
+            visible: badge.label !== ""
+            x: -2
+            y: (badge.height - metrics.height) / 2 + 2
+            width: badge.textW + 4
+            height: metrics.height - 4
+            radius: height / 2
+            blur: 7
+            color: Qt.rgba(0, 0, 0, 0.5)
         }
 
         // Text beside the glyph.
@@ -162,37 +146,17 @@ Item {
             Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
         }
 
-        // Number inside the glyph: light over the empty part, and a dark
-        // copy clipped to the fill on top of it.
-        Item {
+        // Number inside the glyph: dark once the fill reaches past it,
+        // light (over the empty part) otherwise.
+        Text {
             visible: badge.inside
-            x: body.x
-            y: body.y
-            width: body.width
-            height: body.height
-            Text {
-                id: insideText
-                anchors.centerIn: parent
-                text: Math.round(badge.pct)
-                color: "#ffffff"
-                font.pixelSize: 12
-                font.weight: 700
-                font.family: Theme.fontText
-            }
-            Item {
-                x: fill.x - body.x
-                y: 0
-                width: fill.width
-                height: parent.height
-                clip: true
-                Text {
-                    x: insideText.x - parent.x
-                    y: insideText.y
-                    text: insideText.text
-                    color: "#000000"
-                    font: insideText.font
-                }
-            }
+            x: body.x + (body.width - width) / 2
+            y: body.y + (body.height - height) / 2
+            text: Math.round(badge.pct)
+            color: fill.x + fill.width >= x + width ? "#000000" : "#ffffff"
+            font.pixelSize: 12
+            font.weight: 700
+            font.family: Theme.fontText
         }
     }
 
