@@ -37,10 +37,12 @@ Item {
     function recorderArgs(file) {
         const st = settingsStore
         const fps = st ? st.recordFps : 60
-        const q = st ? st.recordQuality : "very_high"
+        // Constant bitrate: with -bm cbr, -q takes the bitrate in kbps
+        // (QP presets gave no concrete figure and varied with content).
+        const kbps = st ? st.recordBitrate : 15000
         const res = st ? st.recordResolution : "native"
         const sizes = { "1080": "1920x1080", "720": "1280x720", "480": "854x480" }
-        const args = ["gpu-screen-recorder", "-w", "screen", "-f", String(fps), "-q", q,
+        const args = ["gpu-screen-recorder", "-w", "screen", "-f", String(fps), "-bm", "cbr", "-q", String(kbps),
                       "-cursor", (st ? st.recordCursor : true) ? "yes" : "no"]
         if (sizes[res]) args.push("-s", sizes[res])
         const audio = []

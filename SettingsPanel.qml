@@ -574,12 +574,12 @@ ColumnLayout {
                         }
                         Separator {}
                         SegRow {
-                            label: "Quality"
+                            label: "Bitrate"
                             SegTrack {
-                                labels: ["Medium", "High", "V. high", "Ultra"]
-                                values: ["medium", "high", "very_high", "ultra"]
-                                current: panel.store ? panel.store.recordQuality : "very_high"
-                                onPicked: (v) => { if (panel.store) panel.store.recordQuality = v }
+                                labels: ["8 Mbps", "15", "25", "40"]
+                                values: [8000, 15000, 25000, 40000]
+                                current: panel.store ? panel.store.recordBitrate : 15000
+                                onPicked: (v) => { if (panel.store) panel.store.recordBitrate = v }
                             }
                         }
                         Separator {}
