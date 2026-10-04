@@ -32,7 +32,6 @@ Item {
     // argv-list command since there's no shell feature needed here (no
     // pipes/redirects), unlike fuser's stderr-silencing.
     property bool _pactlActive: false
-    property bool _foundThisRun: false
 
     readonly property bool active: pipewireActive || _pactlActive
 
@@ -41,47 +40,45 @@ Item {
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: {
-            micMonitor._foundThisRun = false
-            checkProc.running = true
-        }
+        onTriggered: checkProc.running = true
     }
 
     // A plain "any source-output exists" check (the original version of
-    // this file) false-positived as soon as `CavaMonitor.qml` started
-    // running: cava listens to the current sink's *monitor* source to
-    // visualize whatever's playing, which is itself a "source-output" in
-    // pactl's eyes, indistinguishable from a real mic capture by count
-    // alone (confirmed live: `pactl list source-outputs short` showed an
-    // entry attached to source 54, `..._analog-stereo.monitor` — the sink
-    // monitor, not source 55, the real `..._analog-stereo` mic input).
-    // Fixed by cross-referencing each source-output's source index against
-    // the source list and excluding any source whose name ends in
-    // ".monitor" (a monitor tap on an output device, never an actual
-    // microphone) before counting it as mic activity.
+    // this file) false-positived as soon as cava ran: it captures audio to
+    // visualize it, which pactl lists as a source-output like any mic
+    // capture. Monitor taps (sources named "*.monitor") were excluded by
+    // source index — but since cava captures the playing app's own stream
+    // (CavaMonitor `source = <stream node name>`), pactl reports that
+    // capture's source as 4294967295 (no source at all), which the index
+    // check counted as a mic. Now pactl's JSON output is read and captures
+    // are skipped by their own node.name (cava, gsr-* = the screen
+    // recorder's system audio) as well as by monitor source, and only a
+    // capture attached to a real, non-monitor source counts.
     Process {
         id: checkProc
-        command: ["sh", "-c", "pactl list sources short; echo ---; pactl list source-outputs short"]
-
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: (line) => {
-                if (line === "---") { checkProc._inOutputs = true; return }
-                const cols = line.trim().split(/\s+/)
-                if (cols.length < 2 || cols[0].length === 0) return
-                if (!checkProc._inOutputs) {
-                    if (line.includes(".monitor")) checkProc._monitorSourceIds[cols[0]] = true
-                } else {
-                    const sourceId = cols[1]
-                    if (!checkProc._monitorSourceIds[sourceId]) micMonitor._foundThisRun = true
-                }
-            }
+        command: ["sh", "-c", "pactl -f json list sources; echo; echo '#OUTPUTS'; pactl -f json list source-outputs"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onTextChanged: micMonitor._pactlActive = micMonitor._parse(text)
         }
+    }
 
-        property bool _inOutputs: false
-        property var _monitorSourceIds: ({})
-
-        onRunningChanged: if (running) { _inOutputs = false; _monitorSourceIds = ({}) }
-        onExited: micMonitor._pactlActive = micMonitor._foundThisRun
+    function _parse(text) {
+        try {
+            const parts = text.split("#OUTPUTS")
+            const sources = JSON.parse(parts[0])
+            const outputs = JSON.parse(parts[1])
+            const real = {}
+            for (const src of sources)
+                if (!(src.name || "").endsWith(".monitor") && (src.properties || {})["device.class"] !== "monitor")
+                    real[src.index] = true
+            return outputs.some(o => {
+                const name = ((o.properties || {})["node.name"] || "")
+                if (name === "cava" || name.startsWith("gsr-")) return false
+                return real[o.source] === true
+            })
+        } catch (e) {
+            return false
+        }
     }
 }
