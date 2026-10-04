@@ -135,6 +135,16 @@ ColumnLayout {
         return ""
     }
 
+    // "Wi-Fi 6" etc. — the access point's own capability, from its beacons
+    // (wifi_details.py `generation`); what phones show next to a network.
+    function genName(name) {
+        const details = (monitor && monitor.wifiDetails) ? monitor.wifiDetails[name] : null
+        return details && details.generation ? "Wi-Fi " + details.generation : ""
+    }
+    function rowTag(name) {
+        return [genName(name), bandTag(name)].filter(t => t !== "").join(" · ")
+    }
+
     function activate(network) {
         if (network.connected) {
             network.disconnect()
@@ -452,7 +462,7 @@ ColumnLayout {
         readonly property bool showModify: panel.modifyNetworkName === network.name
         readonly property var details: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails[network.name] : null
         readonly property var connInfo: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails["_connection"] : null
-        readonly property string band: panel.bandTag(network.name)
+        readonly property string band: panel.rowTag(network.name)
         readonly property bool hasError: panel.errorNetworkName === network.name && panel.connectError.length > 0
 
         Connections {
@@ -616,7 +626,17 @@ ColumnLayout {
                 spacing: 4
                 visible: row.showDetails
 
-                DetailRow { label: "Technology"; value: (row.network.connected && row.connInfo) ? row.connInfo.technology : "" }
+                DetailRow {
+                    label: "Technology"
+                    value: (row.network.connected && row.connInfo) ? row.connInfo.technology : panel.genName(row.network.name)
+                }
+                // The router can be newer than this laptop's adapter (the
+                // T480's Intel 8265 tops out at Wi-Fi 5).
+                DetailRow {
+                    label: "Connected as"
+                    value: row.network.connected && row.connInfo && row.connInfo.linkTechnology
+                        && row.connInfo.linkGeneration !== row.connInfo.apGeneration ? row.connInfo.linkTechnology : ""
+                }
                 DetailRow { label: "Security"; value: row.details ? row.details.security : "" }
                 DetailRow { label: "IP address"; value: (row.network.connected && row.connInfo) ? row.connInfo.ip : "" }
                 DetailRow { label: "Subnet mask"; value: (row.network.connected && row.connInfo) ? row.connInfo.subnet : "" }
@@ -808,7 +828,7 @@ ColumnLayout {
                             Rectangle {
                                 readonly property var conn: panel.current && panel.monitor && panel.monitor.wifiDetails
                                     ? panel.monitor.wifiDetails["_connection"] : null
-                                readonly property string gen: conn && conn.generation ? conn.generation : ""
+                                readonly property string gen: conn && conn.apGeneration ? conn.apGeneration : ""
                                 visible: gen !== ""
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom

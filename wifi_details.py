@@ -58,6 +58,55 @@ def nmcli_field(fields, *extra_args):
     return values
 
 
+GEN_RANK = {"": 0, "4": 4, "5": 5, "6": 6, "6E": 6.5, "7": 7}
+GEN_NAME = {"4": "Wi-Fi 4 (802.11n)", "5": "Wi-Fi 5 (802.11ac)", "6": "Wi-Fi 6 (802.11ax)",
+            "6E": "Wi-Fi 6E (802.11ax)", "7": "Wi-Fi 7 (802.11be)"}
+
+
+def wifi_device():
+    try:
+        out = subprocess.run(["nmcli", "-t", "-f", "DEVICE,TYPE", "device"],
+                             capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        dev, _, dtype = line.partition(":")
+        if dtype == "wifi":
+            return dev
+    return None
+
+
+def scan_generations(device):
+    """BSSID -> what the access point itself supports, from the capability
+    elements in its beacons (`iw dev <dev> scan dump` reads the kernel's
+    cached scan, no root needed). This is what phones label "Wi-Fi 6";
+    the negotiated link can be lower when the laptop's adapter is older."""
+    gens = {}
+    if not device:
+        return gens
+    try:
+        out = subprocess.run(["iw", "dev", device, "scan", "dump"],
+                             capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return gens
+    for block in re.split(r"^BSS ", out, flags=re.M)[1:]:
+        bssid = block[:17].lower()
+        freq_m = re.search(r"freq:\s*(\d+)", block)
+        freq = float(freq_m.group(1)) if freq_m else 0
+        if "EHT capabilities" in block:
+            gen = "7"
+        elif "HE capabilities" in block:
+            gen = "6E" if freq >= 5925 else "6"
+        elif "VHT capabilities" in block:
+            gen = "5"
+        elif "HT capabilities" in block:
+            gen = "4"
+        else:
+            gen = ""
+        gens[bssid] = gen
+    return gens
+
+
 def prefix_to_subnet(prefix):
     try:
         prefix = int(prefix)
@@ -67,7 +116,7 @@ def prefix_to_subnet(prefix):
     return ".".join(str((mask >> shift) & 0xff) for shift in (24, 16, 8, 0))
 
 
-def get_connection_details():
+def get_connection_details(gens):
     # Which device (if any) currently has an active Wi-Fi connection.
     dev_out = subprocess.run(
         ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"],
@@ -109,7 +158,7 @@ def get_connection_details():
     # nmcli reports this at all.
     # EHT = 802.11be/Wi-Fi 7; HE on 6 GHz (freq >= 5925 MHz) = Wi-Fi 6E.
     # "generation" is the short form for the panel's icon badge.
-    technology, generation = "Wi-Fi", ""
+    generation, ap_bssid = "", ""
     try:
         link_out = subprocess.run(
             ["iw", "dev", device, "link"],
@@ -117,17 +166,21 @@ def get_connection_details():
         ).stdout
         freq_m = re.search(r"freq:\s*(\d+)", link_out)
         freq = float(freq_m.group(1)) if freq_m else 0
+        bssid_m = re.search(r"Connected to ([0-9a-f:]{17})", link_out)
+        ap_bssid = bssid_m.group(1).lower() if bssid_m else ""
         if "EHT-MCS" in link_out:
-            technology, generation = "Wi-Fi 7 (802.11be)", "7"
+            generation = "7"
         elif "HE-MCS" in link_out:
             generation = "6E" if freq >= 5925 else "6"
-            technology = "Wi-Fi " + generation + " (802.11ax)"
         elif "VHT-MCS" in link_out:
-            technology, generation = "Wi-Fi 5 (802.11ac)", "5"
+            generation = "5"
         elif "MCS" in link_out:
-            technology, generation = "Wi-Fi 4 (802.11n)", "4"
+            generation = "4"
     except Exception:
         pass
+    # The router's own capability (what a phone shows) vs. the negotiated
+    # link (capped by this laptop's adapter, e.g. Intel 8265 = Wi-Fi 5).
+    ap_generation = gens.get(ap_bssid, "") or generation
 
     proxy = "None"
     try:
@@ -141,8 +194,10 @@ def get_connection_details():
         pass
 
     return {
-        "technology": technology,
-        "generation": generation,
+        "technology": GEN_NAME.get(ap_generation, "Wi-Fi"),
+        "apGeneration": ap_generation,
+        "linkGeneration": generation,
+        "linkTechnology": GEN_NAME.get(generation, ""),
         "ip": ip,
         "prefix": prefix,
         "subnet": prefix_to_subnet(prefix),
@@ -163,6 +218,7 @@ def main():
         print("{}")
         return
 
+    gens = scan_generations(wifi_device())
     result = {}
     for line in out.splitlines():
         if not line:
@@ -182,12 +238,17 @@ def main():
                 "freq": freq,
                 "rate": rate,
                 "security": security or "Open",
+                "generation": gens.get(bssid.lower(), ""),
             }
-        elif band and band not in existing["band"]:
-            existing["band"] = existing["band"] + " + " + band if existing["band"] else band
+        else:
+            if band and band not in existing["band"]:
+                existing["band"] = existing["band"] + " + " + band if existing["band"] else band
+            g = gens.get(bssid.lower(), "")
+            if GEN_RANK.get(g, 0) > GEN_RANK.get(existing["generation"], 0):
+                existing["generation"] = g
 
     try:
-        result["_connection"] = get_connection_details()
+        result["_connection"] = get_connection_details(gens)
     except Exception:
         result["_connection"] = None
 
