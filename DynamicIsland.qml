@@ -1430,16 +1430,17 @@ PanelWindow {
         // shrinking for ~130 ms.
         readonly property bool osdMorph: island.displayState === "volume" || island.displayState === "brightness"
             || island.displayState === "capslock" || island.displayState === "micmute"
-        // Critically damped for OSDs: with any undershoot the notch dipped
-        // below the OSD's size and the slider (whose scale follows the
-        // notch) visibly shrank and popped back — the "jump".
-        // Collapsing back into the pill uses a stiffer spring: closing a
-        // panel felt slow at the opening's pace (user request).
-        readonly property real morphSpring: Theme.reduceMotion ? 12 : osdMorph ? 9
-            : island.displayState === "idle" ? 22 : Theme.springStiffness
-        readonly property real morphDamping: Theme.reduceMotion ? 1 : osdMorph ? 1 : Theme.springDamping
-        Behavior on animW { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }
-        Behavior on animH { SpringAnimation { spring: notch.morphSpring; damping: notch.morphDamping; epsilon: 0.3 } }
+        // Timed ease-out instead of a spring. An underdamped spring
+        // overshot and pulled back (a "jump" at the end of every open); a
+        // critically damped one either crept into place slowly or, made
+        // stiff enough to end quickly, burst from the pill to a 410 px card
+        // in ~80 ms. A fixed-duration OutCubic grows at a readable pace and
+        // ends exactly on time, never past the target. Collapsing into the
+        // pill is quicker than opening (user request); OSDs are short.
+        readonly property int morphDuration: Theme.reduceMotion ? 120 : osdMorph ? 200
+            : island.displayState === "idle" ? 230 : 360
+        Behavior on animW { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
+        Behavior on animH { NumberAnimation { duration: notch.morphDuration; easing.type: Easing.OutCubic } }
 
         // Purely hover-tracking, not a click-consuming MouseArea — a
         // HoverHandler never intercepts press/click events, so it can sit

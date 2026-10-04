@@ -30,13 +30,9 @@ Singleton {
     readonly property int radiusMedium: 12
     readonly property int radiusLarge: 18
 
-    // Motion. Island morph uses a critically damped spring: it eases in and
-    // settles without overshoot. The earlier 0.3 damping overshot a few px
-    // and pulled back at the end of every open — a visible "jump" (measured
-    // on a recording: the media card went 470 px wide, then back to 459).
-    // Content fades use a short ease-out.
-    readonly property real springStiffness: 14
-    readonly property real springDamping: 1.0
+    // Motion. The island morph is a timed OutCubic (DynamicIsland
+    // notch.morphDuration: 360 ms open, 230 ms into the pill, 200 ms OSD);
+    // content fades use a short ease-out.
     readonly property int fadeDuration: 220
     readonly property int contentScaleDuration: 380
     readonly property int panelSlide: 36
