@@ -3113,6 +3113,19 @@ PanelWindow {
                         horizontalAlignment: Text.AlignLeft
                         // Only opacity animates (never font size: it reflows wrapped lines).
                         Behavior on opacity { enabled: !lyricsView.snapping; NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+
+                        // Click a line → play from there. The 50 ms offset keeps
+                        // the player's rounded position from landing on the
+                        // previous line.
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: mprisMonitor.anyPlayer !== null && mprisMonitor.anyPlayer.canSeek
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                mprisMonitor.anyPlayer.position = parent.modelData.timeSeconds + 0.05
+                                lyricsView.currentIndex = parent.index
+                            }
+                        }
                     }
                 }
 
