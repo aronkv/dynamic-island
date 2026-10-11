@@ -523,6 +523,15 @@ ColumnLayout {
                     title: "BATTERY"
                     Group {
                         Row {
+                            icon: "power-profile-power-saver-symbolic"
+                            tint: Theme.green
+                            label: "Low Power Mode at 20%"
+                            subtitle: "Switch to Power Saver automatically on battery; restored when you plug in"
+                            checked: panel.store ? panel.store.autoLowPower : true
+                            onToggled: if (panel.store) panel.store.autoLowPower = !panel.store.autoLowPower
+                        }
+                        Separator {}
+                        Row {
                             icon: "battery-level-50-symbolic"
                             tint: Theme.green
                             label: "Battery outside the pill"
