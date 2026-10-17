@@ -910,14 +910,30 @@ PanelWindow {
 
     // Ethernet cable plugged in / pulled → brief "Ethernet" pill
     // (EthernetView). Same start-up guard as the charger, so the link state
-    // found at login doesn't announce itself.
+    // found at login doesn't announce itself. The carrier flaps while the
+    // link negotiates (plugging in reads up, down 3 ms later, then up
+    // again ~3.6 s later once negotiated), so the pill waits until
+    // the state has been stable for a moment and only shows if it differs
+    // from the last one announced.
     property bool ethernetEventActive: false
     property bool _ethernetReady: false
-    Timer { interval: 2500; running: true; onTriggered: island._ethernetReady = true }
+    property bool _ethernetShownState: false
+    Timer {
+        interval: 2500; running: true
+        onTriggered: { island._ethernetShownState = networkMonitor.ethernetConnected; island._ethernetReady = true }
+    }
     Connections {
         target: networkMonitor
         function onEthernetConnectedChanged() {
-            if (!island._ethernetReady) return
+            if (island._ethernetReady) ethernetSettleTimer.restart()
+        }
+    }
+    Timer {
+        id: ethernetSettleTimer
+        interval: 700
+        onTriggered: {
+            if (networkMonitor.ethernetConnected === island._ethernetShownState) return
+            island._ethernetShownState = networkMonitor.ethernetConnected
             island.ethernetEventActive = true
             ethernetCollapseTimer.restart()
         }
