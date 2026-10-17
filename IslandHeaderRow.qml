@@ -141,6 +141,18 @@ RowLayout {
             icon: headerRow.networkMonitor ? headerRow.networkMonitor.primaryIcon : "network-wireless-symbolic"
             opacity: headerRow.networkMonitor && headerRow.networkMonitor.primaryType !== "none" ? 1 : 0.5
         }
+        Text {
+            visible: text !== ""
+            anchors.right: wifiIcon.right
+            anchors.bottom: wifiIcon.bottom
+            anchors.rightMargin: -3
+            anchors.bottomMargin: -3
+            text: headerRow.networkMonitor ? headerRow.networkMonitor.wifiGen : ""
+            color: "#ffffff"
+            font.pixelSize: 8
+            font.weight: 800
+            font.family: Theme.fontText
+        }
 
         MouseArea {
             anchors.fill: parent

@@ -38,6 +38,10 @@ Item {
     readonly property bool ethernetActive: wiredDevice ? (wiredDevice.connected && wiredDevice.hasLink) : false
     readonly property var activeWifiNetwork: wifiEnabled ? (networks.find(n => n.connected) || null) : null
     readonly property string primaryType: ethernetActive ? "ethernet" : activeWifiNetwork ? "wifi" : "none"
+    // Wi-Fi generation of the live link ("6"), for the small number on the
+    // header/overview Wi-Fi icons; empty on Ethernet or when unknown.
+    readonly property string wifiGen: primaryType === "wifi" && wifiDetails._connection && wifiDetails._connection.apGeneration
+        ? String(wifiDetails._connection.apGeneration) : ""
     readonly property string primaryIcon: primaryType === "ethernet" ? "network-wired-symbolic" : "network-wireless-symbolic"
     readonly property string primaryLabel: {
         if (primaryType === "ethernet") return "Ethernet"

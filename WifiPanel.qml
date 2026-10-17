@@ -141,8 +141,10 @@ ColumnLayout {
         const details = (monitor && monitor.wifiDetails) ? monitor.wifiDetails[name] : null
         return details && details.generation ? "Wi-Fi " + details.generation : ""
     }
-    function rowTag(name) {
-        return [genName(name), bandTag(name)].filter(t => t !== "").join(" · ")
+    // Just the number ("6"), drawn at the bottom-right of the Wi-Fi glyph.
+    function genOf(name) {
+        const details = (monitor && monitor.wifiDetails) ? monitor.wifiDetails[name] : null
+        return details && details.generation ? String(details.generation) : ""
     }
 
     function activate(network) {
@@ -201,6 +203,9 @@ ColumnLayout {
         property real strength: 0
         property color onColor: "#ffffff"
         property color offColor: Qt.rgba(1, 1, 1, 0.25)
+        // Wi-Fi generation ("5", "6", "6E"…) as a small number at the
+        // bottom-right, the corner the arcs leave empty.
+        property string gen: ""
         readonly property real pct: (strength > 0 && strength <= 1) ? strength * 100 : strength
         readonly property int level: pct >= 75 ? 3 : pct >= 50 ? 2 : pct >= 25 ? 1 : 0
         implicitWidth: 18
@@ -233,6 +238,18 @@ ColumnLayout {
                     }
                 }
             }
+        }
+        Text {
+            visible: glyph.gen !== ""
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: -2 * glyph.s
+            anchors.bottomMargin: -2 * glyph.s
+            text: glyph.gen
+            color: glyph.onColor
+            font.pixelSize: Math.round(8 * glyph.s)
+            font.weight: 800
+            font.family: Theme.fontText
         }
     }
 
@@ -462,7 +479,7 @@ ColumnLayout {
         readonly property bool showModify: panel.modifyNetworkName === network.name
         readonly property var details: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails[network.name] : null
         readonly property var connInfo: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails["_connection"] : null
-        readonly property string band: panel.rowTag(network.name)
+        readonly property string band: panel.bandTag(network.name)
         readonly property bool hasError: panel.errorNetworkName === network.name && panel.connectError.length > 0
 
         Connections {
@@ -510,6 +527,7 @@ ColumnLayout {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
                     strength: row.network.signalStrength
+                    gen: panel.genOf(row.network.name)
                 }
 
                 Column {
@@ -822,33 +840,10 @@ ColumnLayout {
                                 strength: panel.current ? panel.current.signalStrength : 0
                                 onColor: panel.current ? "#000000" : "#ffffff"
                                 offColor: panel.current ? Qt.rgba(0, 0, 0, 0.25) : Qt.rgba(1, 1, 1, 0.25)
-                            }
-                            // Wi-Fi generation ("5", "6", "6E", "7") of the
-                            // live link, from `iw dev … link` (wifi_details.py).
-                            Rectangle {
+                                // Generation of the live link (wifi_details.py).
                                 readonly property var conn: panel.current && panel.monitor && panel.monitor.wifiDetails
                                     ? panel.monitor.wifiDetails["_connection"] : null
-                                readonly property string gen: conn && conn.apGeneration ? conn.apGeneration : ""
-                                visible: gen !== ""
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.rightMargin: -4
-                                anchors.bottomMargin: -3
-                                width: Math.max(17, genText.implicitWidth + 8)
-                                height: 17
-                                radius: 8.5
-                                color: "#000000"
-                                border.width: 1.5
-                                border.color: "#ffffff"
-                                Text {
-                                    id: genText
-                                    anchors.centerIn: parent
-                                    text: parent.gen
-                                    color: "#ffffff"
-                                    font.pixelSize: 9
-                                    font.weight: 700
-                                    font.family: Theme.fontText
-                                }
+                                gen: conn && conn.apGeneration ? conn.apGeneration : ""
                             }
                         }
                         Column {

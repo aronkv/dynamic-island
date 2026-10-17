@@ -74,6 +74,8 @@ Item {
         // state), white when active, outlined when off.
         property string subIcon: ""
         property bool subActive: false
+        // Wi-Fi generation, a small number at the icon's bottom-right.
+        property string gen: ""
         signal toggleRequested()
         signal openRequested()
         implicitWidth: 150
@@ -131,12 +133,25 @@ Item {
             Behavior on color { ColorAnimation { duration: 180 } }
             Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack; easing.overshoot: 2.5 } }
             RowIcon {
+                id: tileIcon
                 anchors.centerIn: parent
                 width: 15
                 height: 15
                 icon: tile.icon
                 iconColor: tile.active ? "#000000" : "#ffffff"
                 opacity: tile.active ? 1 : 0.55
+            }
+            Text {
+                visible: tile.gen !== ""
+                anchors.right: tileIcon.right
+                anchors.bottom: tileIcon.bottom
+                anchors.rightMargin: -3
+                anchors.bottomMargin: -3
+                text: tile.gen
+                color: tile.active ? "#000000" : "#ffffff"
+                font.pixelSize: 8
+                font.weight: 800
+                font.family: Theme.fontText
             }
             MouseArea {
                 id: badgeMouse
@@ -350,6 +365,7 @@ Item {
                     icon: eth ? "network-wired-symbolic" : "network-wireless-symbolic"
                     title: eth ? "Ethernet" : "Wi-Fi"
                     subIcon: eth ? "network-wireless-symbolic" : ""
+                    gen: nm ? nm.wifiGen : ""
                     subActive: nm ? nm.activeWifiNetwork !== null : false
                     status: !nm ? "Not available"
                         : eth ? (!nm.wifiEnabled ? "Wi-Fi off" : nm.activeWifiNetwork ? "Wi-Fi · " + nm.activeWifiNetwork.name : "Wi-Fi on")
