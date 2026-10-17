@@ -123,6 +123,15 @@ Item {
         obsidianWriteProc.running = true
     }
 
+    // A vault opened/created in Obsidian lands in obsidian.json; the writer
+    // installs the theme there (it never switches the active theme).
+    FileView {
+        path: Quickshell.env("HOME") + "/.config/obsidian/obsidian.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: themeProfiles._writeObsidian(settingsStore ? settingsStore.themeAccent : "")
+    }
+
     Connections {
         target: settingsStore
         function onObsidianFollowThemeChanged() {

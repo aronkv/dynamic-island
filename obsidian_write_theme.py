@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Writes the color block of the Obsidian "Island" theme.
 
-For every vault listed in ~/.config/obsidian/obsidian.json that has
-.obsidian/themes/Island/theme.css, replaces the text between the
+For every vault listed in ~/.config/obsidian/obsidian.json, installs the
+theme (quickshell/obsidian/Island) into .obsidian/themes/Island if it is
+missing — only installs it, the active theme is left to the user — then
+replaces the text between the
 `/* ISLAND-COLORS:BEGIN */` and `/* ISLAND-COLORS:END */` markers (the rest
 of the file is left alone; no markers → the file is skipped). Obsidian
 live-reloads theme CSS, so no restart is needed.
@@ -16,6 +18,7 @@ Usage: obsidian_write_theme.py follow "#rrggbb" | obsidian_write_theme.py static
 import json
 import os
 import re
+import shutil
 import sys
 
 BEGIN = "/* ISLAND-COLORS:BEGIN */"
@@ -24,6 +27,8 @@ HEX_RE = re.compile(r"^#?([0-9A-Fa-f]{6})$")
 
 # Obsidian's default accent: hsl(254, 80%, 68%).
 OBSIDIAN_PURPLE = "#8b6cef"
+
+THEME_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "obsidian", "Island")
 
 
 def rgb(h):
@@ -204,7 +209,16 @@ def vault_themes():
         return []
     out = []
     for v in vaults.values():
-        p = os.path.join(v.get("path", ""), ".obsidian", "themes", "Island", "theme.css")
+        root = v.get("path", "")
+        if not os.path.isdir(root):
+            continue
+        dest = os.path.join(root, ".obsidian", "themes", "Island")
+        if not os.path.isdir(dest):
+            try:
+                shutil.copytree(THEME_SRC, dest)
+            except OSError:
+                continue
+        p = os.path.join(dest, "theme.css")
         if os.path.isfile(p):
             out.append(p)
     return out
