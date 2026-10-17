@@ -54,7 +54,9 @@ Item {
             id: fill
             readonly property real value: osd.kind === "volume" && osd.muted ? 0 : Math.max(0, Math.min(1, osd.level))
             height: parent.height
-            width: Math.max(height, parent.width * value)
+            // The icon's circle is always lit and the rest scales with the
+            // level, so low steps stay visible (max(height, …) froze 0–15 %).
+            width: height + (parent.width - height) * value
             radius: height / 2
             color: "#ffffff"
             Behavior on width {
