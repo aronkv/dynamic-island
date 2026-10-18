@@ -49,7 +49,28 @@ Item {
         onlinePlainLyrics = ""
         _onlineState = "none"
         _fetchedForKey = ""
+        _lengthWaitDone = false
         maybeFetchOnline()
+    }
+
+    // A player can announce a new track before its length; /api/get needs
+    // the duration (0 is rejected), and querying without it ended in "No
+    // lyrics found" for songs lrclib does have. So wait for the length a
+    // moment; a player that never reports one goes straight to the search.
+    property bool _lengthWaitDone: false
+    Timer {
+        id: lengthWait
+        interval: 1500
+        onTriggered: { lyricsProvider._lengthWaitDone = true; lyricsProvider.maybeFetchOnline() }
+    }
+    Connections {
+        target: lyricsProvider.player
+        function onLengthChanged() {
+            if (!lengthWait.running) return
+            lengthWait.stop()
+            lyricsProvider._lengthWaitDone = true
+            lyricsProvider.maybeFetchOnline()
+        }
     }
 
     onLrcTextChanged: maybeFetchOnline()
@@ -99,6 +120,7 @@ Item {
         if (!player || !trackKey) return
         if (localSyncedLines.length > 0) return
         if (_fetchedForKey === trackKey) return
+        if (!(player.length > 0) && !_lengthWaitDone) { lengthWait.restart(); return }
         _fetchedForKey = trackKey
         _onlineState = "loading"
         _plainFromGet = ""
@@ -120,6 +142,7 @@ Item {
         _searchQueue = variants
 
         fetchProcess.running = false
+        if (!(player.length > 0)) { _nextSearch(); return }
         fetchProcess.command = [
             "curl", "-s", "--max-time", "8", "-G", "https://lrclib.net/api/get",
             "--data-urlencode", "artist_name=" + artist,
@@ -175,6 +198,15 @@ Item {
                 _onlineState = "synced"
                 return
             }
+        }
+        // No exact match (e.g. no length to match on): untimed text from a
+        // search result of about the same length and title.
+        if (!_plainFromGet) {
+            const len = player ? player.length : 0
+            const t = _norm(player ? player.trackTitle : "")
+            const plain = _candidates.find(r => r && r.plainLyrics && _norm(r.trackName) === t
+                && (!(len > 0) || !r.duration || Math.abs(r.duration - len) <= 15))
+            if (plain) _plainFromGet = plain.plainLyrics
         }
         if (_plainFromGet) {
             onlinePlainLyrics = _plainFromGet
