@@ -64,6 +64,7 @@ Item {
         id: listenerProc
         command: ["python3", Quickshell.env("HOME") + "/.config/quickshell/localsend_discover.py"]
         running: true
+        onRunningChanged: if (!running) helperRestart.restart()
 
         stdout: SplitParser {
             onRead: (line) => {
@@ -76,6 +77,17 @@ Item {
                 }
                 localSendMonitor.mergeDevice(payload)
             }
+        }
+    }
+
+    // Discovery and the receiver must always run: if either helper exits
+    // (killed, a crash, the port still taken), start it again.
+    Timer {
+        id: helperRestart
+        interval: 3000
+        onTriggered: {
+            if (!listenerProc.running) listenerProc.running = true
+            if (!serverProc.running) serverProc.running = true
         }
     }
 
@@ -107,6 +119,7 @@ Item {
         id: serverProc
         command: ["python3", Quickshell.env("HOME") + "/.config/quickshell/localsend_server.py"]
         running: true
+        onRunningChanged: if (!running) helperRestart.restart()
         stdinEnabled: true
 
         stdout: SplitParser {

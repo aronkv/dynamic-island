@@ -82,22 +82,12 @@ DEVICE_INFO = {
     "download": False,
 }
 
-# Single-instance guard — same rationale/pattern as localsend_discover.py's
-# own lock: a killed-and-relaunched `qs` doesn't propagate SIGTERM to
-# children, so a stale previous instance would otherwise keep the port bound
-# and pile up across restarts.
-LOCK_PATH = "/tmp/localsend_server.lock"
-try:
-    with open(LOCK_PATH) as f:
-        old_pid = int(f.read().strip())
-    os.kill(old_pid, 15)
-    time.sleep(0.3)
-except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
-    pass
-with open(LOCK_PATH, "w") as f:
-    f.write(str(os.getpid()))
-
-
+# No single-instance lock: a lock that killed the previous instance also
+# killed the live island's helper whenever a second qs started (a headless
+# check, a crash restart), and its own copy then died with that qs, leaving
+# the laptop invisible. Leftovers of a killed qs are covered by the
+# parent-death signal above; a second copy just coexists (or, for the
+# server, fails to bind and LocalSendMonitor retries it).
 def log(event):
     print(json.dumps(event), flush=True)
 

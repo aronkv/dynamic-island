@@ -56,26 +56,12 @@ ANNOUNCE_PAYLOAD = json.dumps({
 }).encode("utf-8")
 ANNOUNCE_INTERVAL_S = 5
 
-# Single-instance guard: SO_REUSEADDR below lets multiple copies of this
-# script bind the same UDP port without erroring, which meant a killed-and-
-# relaunched `qs` (this project's established restart procedure kills the
-# parent PID directly, which does not propagate SIGTERM to children) leaked
-# one more orphaned instance of this infinite recvfrom() loop on every
-# single restart — confirmed live: 4 were found running simultaneously after
-# a normal session's worth of iterative restarts. A PID-file lock makes a
-# fresh launch check for and replace any stale/still-alive previous instance
-# instead of silently piling up.
-LOCK_PATH = "/tmp/localsend_discover.lock"
-try:
-    with open(LOCK_PATH) as f:
-        old_pid = int(f.read().strip())
-    os.kill(old_pid, 15)
-    time.sleep(0.2)
-except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
-    pass
-with open(LOCK_PATH, "w") as f:
-    f.write(str(os.getpid()))
-
+# No single-instance lock: a lock that killed the previous instance also
+# killed the live island's helper whenever a second qs started (a headless
+# check, a crash restart), and its own copy then died with that qs, leaving
+# the laptop invisible. Leftovers of a killed qs are covered by the
+# parent-death signal above; a second copy just coexists (or, for the
+# server, fails to bind and LocalSendMonitor retries it).
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(("", PORT))
