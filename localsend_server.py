@@ -35,12 +35,10 @@ presents the same identity whether it's sending or receiving.
 """
 import json
 import os
-import socket
 import ssl
 import subprocess
 import sys
 import threading
-import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 

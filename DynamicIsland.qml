@@ -1904,7 +1904,9 @@ PanelWindow {
                     IconImage {
                         anchors.centerIn: parent
                         implicitSize: 20
-                        visible: island.idleShowsCover
+                        // idleMediaMode follows the player with a cross-fade, so
+                        // the cover layout can outlive the player by a moment.
+                        visible: island.idleShowsCover && mprisMonitor.anyPlayer !== null
                             && (!mprisMonitor.anyPlayer.trackArtUrl || artImage.status === Image.Error)
                         source: {
                             const p = mprisMonitor.anyPlayer
@@ -3230,6 +3232,7 @@ PanelWindow {
                             enabled: mprisMonitor.anyPlayer !== null && mprisMonitor.anyPlayer.canSeek
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
+                                if (!mprisMonitor.anyPlayer) return
                                 mprisMonitor.anyPlayer.position = parent.modelData.timeSeconds + 0.05
                                 lyricsView.currentIndex = parent.index
                             }
