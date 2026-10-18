@@ -21,7 +21,7 @@ function parse(input, now, selected) {
     let s = " " + input.trim().replace(/\s+/g, " ") + " "
     if (s.trim() === "") return null
     const today = dayStart(now)
-    let date = null, time = null
+    let date = null, time = null, bareHour = false
     const take = (re, fn) => {
         const m = s.match(re)
         if (!m) return false
@@ -86,17 +86,26 @@ function parse(input, now, selected) {
         if (m[2].toLowerCase() === "am" && h === 12) h = 0
         time = pad(h) + ":00"
     })
-    if (!time) take(/\s(?:at|@) ?(\d{1,2})\s/i, m => { const h = +m[1]; if (h > 23) return false; time = pad(h) + ":00" })
+    if (!time) take(/\s(?:at|@) ?(\d{1,2})\s/i, m => {
+        const h = +m[1]; if (h > 23) return false
+        time = pad(h) + ":00"
+        bareHour = h >= 1 && h <= 11      // "at 7": morning or evening, decided below
+    })
 
     const title = s.replace(/\s(at|on)\s*$/i, " ").replace(/^\s*(at|on)\s/i, " ").trim().replace(/\s+/g, " ")
     if (title === "") return null
+    const nowMin = now.getHours() * 60 + now.getMinutes()
     if (!date) {
         const base = selected ? dayStart(selected) : today
         date = base
         if (time && iso(base) === iso(today)) {
-            const [h, mi] = time.split(":").map(Number)
-            if (h * 60 + mi <= now.getHours() * 60 + now.getMinutes()) date = addDays(today, 1)
+            const h = +time.slice(0, 2), mi = +time.slice(3)
+            // A bare "at 7" whose morning is over but evening isn't → tonight.
+            if (bareHour && h * 60 + mi <= nowMin && (h + 12) * 60 + mi > nowMin) time = pad(h + 12) + ":" + pad(mi)
+            else if (h * 60 + mi <= nowMin) date = addDays(today, 1)
         }
     }
+    // On another day a bare 1–6 means the afternoon (nobody books 3 a.m.).
+    if (bareHour && time && +time.slice(0, 2) <= 6 && iso(date) !== iso(today)) time = pad(+time.slice(0, 2) + 12) + ":00"
     return { title: title.charAt(0).toUpperCase() + title.slice(1), date: iso(date), time: time || "" }
 }
