@@ -2594,8 +2594,15 @@ PanelWindow {
             transformOrigin: Item.Top          // the notch grows down from the top edge
             visible: opacity > 0
             // OSDs answer a key press: fast in, fast out (the panels' slow
-            // fade-in left the slider grey and late).
-            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : islandOsd.shown ? 120 : 90; easing.type: Easing.OutCubic } }
+            // fade-in left the slider grey and late). Caps Lock / mic keep
+            // the pill's size, so they wait for the idle row's 70 ms
+            // fade-out instead of drawing over the clock.
+            Behavior on opacity {
+                SequentialAnimation {
+                    PauseAnimation { duration: !Theme.reduceMotion && islandOsd.shown && !islandOsd.isLevel ? 70 : 0 }
+                    NumberAnimation { duration: Theme.reduceMotion ? 0 : islandOsd.shown ? 120 : 90; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         IslandOsd {

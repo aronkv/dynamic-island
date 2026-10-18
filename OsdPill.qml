@@ -172,7 +172,9 @@ Item {
         radius: height / 2
         color: !osd.on ? "transparent"
             : osd.kind === "mic" ? Theme.red : "#ffffff"
-        Behavior on color { ColorAnimation { duration: 200 } }
+        // Only a change while already shown animates; appearing in the
+        // final colour (it used to fade up from black through dark red).
+        Behavior on color { enabled: !osd.snap; ColorAnimation { duration: 200 } }
         readonly property color glyph: osd.on && osd.kind === "capslock" ? "#000000" : "#ffffff"
 
         Item {
