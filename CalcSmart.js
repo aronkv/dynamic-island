@@ -41,6 +41,7 @@ function parseAmount(str) {
 // ── Dates ───────────────────────────────────────────────────────────────
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
 function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()) }
 function daysBetween(a, b) { return Math.round((dayStart(b) - dayStart(a)) / 86400000) }
@@ -91,6 +92,12 @@ function parseDate(str, now, future) {
     }
     const named = NAMED_DAYS[s.replace(/\s+day$/, "") in NAMED_DAYS ? s.replace(/\s+day$/, "") : s]
     if (named) return pick(named)
+    // Weekday: the next one (a week ahead when it's today), or the last one.
+    const wd = WEEKDAY_NAMES.findIndex((w, i) => s === w || s === WEEKDAYS[i].toLowerCase())
+    if (wd >= 0) {
+        const diff = future ? ((wd - today.getDay() + 7) % 7 || 7) : -((today.getDay() - wd + 7) % 7 || 7)
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate() + diff)
+    }
 
     let m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})\.?$/)                  // 2026-12-31, 2026.12.31.
     if (m) return new Date(+m[1], +m[2] - 1, +m[3])
@@ -161,8 +168,9 @@ function parseDateQuery(input, now) {
         const diff = daysBetween(now, d)
         return { kind: "date", text: fmtDate(d), sub: diff === 0 ? "today" : (diff > 0 ? "in " : "") + plural(Math.abs(diff), "day") + (diff < 0 ? " ago" : ""), value: diff, copy: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") }
     }
-    // "what day is christmas", "easter 2027"
+    // "what day is christmas", "easter 2027", or just "christmas" / "friday"
     m = s.match(/^(?:what day is|when is)\s+(.+)$/) || s.match(/^(easter|christmas|xmas)\s+(\d{4})$/)
+        || (BARE_DAY.test(s) ? [s, s] : null)
     if (m) {
         let d = null
         if (m[2]) d = NAMED_DAYS[m[1]](+m[2])
@@ -336,9 +344,13 @@ function parseUnits(input) {
     return { kind: "unit", text: fmtNum(r, dec) + " " + nm(ub.name, r), sub: fmtNum(value, 6) + " " + nm(ua.name, value) + " = " + fmtNum(r, 8) + " " + nm(ub.name, r), value: r, copy: String(Math.round(r * 1e8) / 1e8) }
 }
 
+// Holidays and weekdays that answer on their own ("christmas" → its date).
+// Seasons are left out: "fall" or "summer" alone is more likely a search.
+const BARE_DAY = /^(christmas( eve)?|xmas|easter|new year'?s?( eve)?|nye|halloween|valentine'?s?( day)?|(sun|mon|tues|wednes|thurs|fri|satur)day)$/
+
 // Entry point. `rates`: { CODE: per-EUR rate } or null while loading.
 function smart(input, rates, now) {
-    if (!input || !/\d|until|till|since|when is|what day/i.test(input)) return null
+    if (!input || !(/\d|until|till|since|when is|what day/i.test(input) || BARE_DAY.test(input.trim().toLowerCase()))) return null
     return parseDateQuery(input, now || new Date()) || parseCurrency(input, rates) || parseUnits(input)
 }
 

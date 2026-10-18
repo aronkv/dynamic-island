@@ -376,7 +376,7 @@ qs kill -i <id>; hyprctl eval 'hl.dispatch(hl.dsp.exec_cmd("qs"))'   # clean res
 ```
 
 The pure-JS logic (`CalcSmart.js`, `CalendarParse.js`, `ThemePalette.js`) runs under node once you
-strip the `.pragma library` line.
+strip the `.pragma library` line; `node tests/logic.js` checks the date parsing.
 
 ## Credits
 
