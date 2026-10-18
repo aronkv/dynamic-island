@@ -130,7 +130,24 @@ function plural(n, w) { return n + " " + w + (Math.abs(n) === 1 ? "" : "s") }
 
 function parseDateQuery(input, now) {
     const s = input.trim().toLowerCase().replace(/^how many\s+/, "").replace(/\s+are\s+there|\s+is\s+it|\s+left/g, "")
-    let m = s.match(/^(days?|weeks?)\s+(until|till|til|to|before|since|from|after)\s+(.+)$/)
+    let m = s.match(/^((?:sun|mon|tues|wednes|thurs|fri|satur)days)\s+(until|till|til|to|before|since|from|after)\s+(.+)$/)
+    if (m) {
+        // "how many fridays until jun 15": that weekday's dates after today
+        // up to and including the target (or, with since, from the target
+        // up to yesterday).
+        const since = m[2] === "since" || m[2] === "after" || m[2] === "from"
+        const target = parseDate(m[3], now, !since)
+        if (!target) return null
+        const wd = WEEKDAY_NAMES.indexOf(m[1].slice(0, -1))
+        const today = dayStart(now)
+        const a = since ? target : new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+        const b = since ? new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1) : target
+        const span = daysBetween(a, b) + 1
+        const count = span <= 0 ? 0 : Math.floor(span / 7) + ((wd - a.getDay() + 7) % 7 < span % 7 ? 1 : 0)
+        const name = WEEKDAY_NAMES[wd].charAt(0).toUpperCase() + WEEKDAY_NAMES[wd].slice(1)
+        return { kind: "date", text: count + " " + name + (count === 1 ? "" : "s"), sub: (since ? "since " : "until ") + fmtDate(target), value: count, copy: String(count) }
+    }
+    m = s.match(/^(days?|weeks?)\s+(until|till|til|to|before|since|from|after)\s+(.+)$/)
     if (!m) {
         m = s.match(/^(until|till|since)\s+(.+)$/)
         if (m) m = [m[0], "days", m[1], m[2]]
@@ -350,7 +367,7 @@ const BARE_DAY = /^(christmas( eve)?|xmas|easter|new year'?s?( eve)?|nye|hallowe
 
 // Entry point. `rates`: { CODE: per-EUR rate } or null while loading.
 function smart(input, rates, now) {
-    if (!input || !(/\d|until|till|since|when is|what day/i.test(input) || BARE_DAY.test(input.trim().toLowerCase()))) return null
+    if (!input || !(/\d|until|\btill?\b|since|when is|what day/i.test(input) || BARE_DAY.test(input.trim().toLowerCase()))) return null
     return parseDateQuery(input, now || new Date()) || parseCurrency(input, rates) || parseUnits(input)
 }
 

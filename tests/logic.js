@@ -29,4 +29,12 @@ assert.equal(s("halloween").split(" | ")[0], "Sat, 31 Oct 2026")
 assert.equal(s("fall"), null)
 assert.equal(s("firefox"), null)
 assert.equal(s("easter 2027"), "Sun, 28 Mar 2027 | in 161 days")
+// Weekday counts, against a brute-force count.
+const count = (from, to, wd) => { let n = 0; for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) if (d.getDay() === wd) n++; return n }
+assert.equal(s("how many fridays until jun 15"), count(new Date(2026, 9, 19), new Date(2027, 5, 15), 5) + " Fridays | until Tue, 15 Jun 2027")
+assert.equal(s("how many sundays til dec 25"), count(new Date(2026, 9, 19), new Date(2026, 11, 25), 0) + " Sundays | until Fri, 25 Dec 2026")
+assert.equal(s("fridays until friday"), "1 Friday | until Fri, 23 Oct 2026")
+assert.equal(s("mondays since sep 1"), count(new Date(2026, 8, 1), new Date(2026, 9, 17), 1) + " Mondays | since Tue, 1 Sep 2026")
+assert.equal(s("saturdays til christmas"), "9 Saturdays | until Fri, 25 Dec 2026")
+assert.equal(s("days til christmas"), "68 days | until Fri, 25 Dec 2026  ·  9 weeks 5 days")
 console.log("all ok")
