@@ -184,20 +184,22 @@ Item {
     property string sendStatus: "" // "" | "sending" | "success" | "error"
     property string sendErrorMessage: ""
 
-    function sendFile(device, filePath) {
+    function sendFiles(device, paths) {
         localSendMonitor.sendStatus = "sending"
         localSendMonitor.sendErrorMessage = ""
+        // ponytail: a flat 30 s more per extra file; a progress line from
+        // the helper restarting the timer would fit large files better.
+        sendTimeoutTimer.interval = 20000 + 30000 * Math.max(0, paths.length - 1)
         sendProc.command = [
             "python3",
             Quickshell.env("HOME") + "/.config/quickshell/localsend_send.py",
-            filePath,
             device.ip,
             String(device.port),
             device.protocol,
             "Dynamic Island",
             "Linux",
             "quickshell-dynamic-island"
-        ]
+        ].concat(paths)
         sendProc.running = true
         sendTimeoutTimer.restart()
     }
@@ -205,7 +207,7 @@ Item {
     // A send that never gets a response (a firewalled/unreachable device,
     // or the helper hanging) used to leave sendStatus stuck on "sending"
     // forever, with no way for the UI to recover. Restarted on every
-    // sendFile() call, stopped as soon as the process actually finishes
+    // sendFiles() call, stopped as soon as the process actually finishes
     // (success, a parsed error, or a nonzero exit — see sendProc.onExited)
     // so a fast completion never fires a stale timeout afterward.
     Timer {

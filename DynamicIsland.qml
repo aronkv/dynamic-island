@@ -387,10 +387,12 @@ PanelWindow {
     // point; only auto-hides a few seconds after a send actually finishes
     // (success or error), via localSendResultTimer further down.
     property bool localSendActive: false
-    property string localSendFilePath: ""
+    // Every file dropped at once (a multi-selection from the file manager),
+    // sent in one LocalSend session.
+    property var localSendPaths: []
     property string localSendFileName: ""
     // A dropped web link / plain text is sent as a LocalSend text message
-    // (localSendFilePath = "text:<payload>", see localsend_send.py).
+    // (localSendPaths = ["text:<payload>"], see localsend_send.py).
     property bool localSendIsText: false
     // Pill/strip: settingsStore.pillMode is the user's manual pick, but a
     // fullscreen focused window always forces "strip" regardless (so the
@@ -1697,12 +1699,14 @@ PanelWindow {
             anchors.fill: parent
             onEntered: (drag) => { if (!drag.hasUrls && !drag.hasText) drag.accepted = false }
             onDropped: (drop) => {
-                const first = drop.urls.length > 0 ? drop.urls[0].toString() : ""
-                if (first.startsWith("file://")) {
-                    const path = decodeURIComponent(first.substring(7))
+                const urls = drop.urls.map(u => u.toString())
+                const first = urls.length > 0 ? urls[0] : ""
+                const paths = urls.filter(u => u.startsWith("file://")).map(u => decodeURIComponent(u.substring(7)))
+                if (paths.length > 0) {
                     island.localSendIsText = false
-                    island.localSendFilePath = path
-                    island.localSendFileName = path.substring(path.lastIndexOf("/") + 1)
+                    island.localSendPaths = paths
+                    island.localSendFileName = paths.length > 1 ? paths.length + " files"
+                        : paths[0].substring(paths[0].lastIndexOf("/") + 1)
                 } else {
                     // A link dragged from the browser (or any plain text):
                     // send it as a message, not as a "file" named after the
@@ -1710,7 +1714,7 @@ PanelWindow {
                     const text = (first !== "" ? first : (drop.text || "")).trim()
                     if (text === "") return
                     island.localSendIsText = true
-                    island.localSendFilePath = "text:" + text
+                    island.localSendPaths = ["text:" + text]
                     island.localSendFileName = text
                 }
                 localSendMonitor.sendStatus = ""
@@ -2232,7 +2236,7 @@ PanelWindow {
 
         // Device picker + send status, shown after dropping a file on the
         // pill (see the DropArea above). Real protocol send flow lives in
-        // LocalSendMonitor.sendFile() / localsend_send.py — this is purely
+        // LocalSendMonitor.sendFiles() / localsend_send.py — this is purely
         // the picker UI + status text. Shares the "localsend" displayState
         // with the incoming accept/reject prompt below (Extension 24) —
         // only one of the two is ever visible, keyed on whether
@@ -2312,7 +2316,7 @@ PanelWindow {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: localSendMonitor.sendFile(parent.modelData, island.localSendFilePath)
+                            onClicked: localSendMonitor.sendFiles(parent.modelData, island.localSendPaths)
                         }
                     }
                 }
