@@ -535,7 +535,7 @@ PanelWindow {
         if (!idleLyricsSynced) return ""
         const lines = lyricsProvider.syncedLines
         const t = idleLyricsLineIndex >= 0 && idleLyricsLineIndex < lines.length ? lines[idleLyricsLineIndex].text.trim() : ""
-        return t !== "" ? t : "♪"   // before the first line / instrumental gap
+        return t   // "" before the first line / in an instrumental gap
     }
 
     Timer {
@@ -757,7 +757,7 @@ PanelWindow {
         repeat: true
         triggeredOnStart: true
         // Also while paused: after a restart or a seek the pill otherwise
-        // kept showing ♪ until playback resumed.
+        // kept showing a stale line until playback resumed.
         running: island.displayState === "idle" && island.hasAnyPlayer && settingsStore.idlePlayerMode === "lyrics" && lyricsProvider.state === "synced"
         onTriggered: {
             if (mprisMonitor.anyPlayer) {
@@ -1998,7 +1998,10 @@ PanelWindow {
                     // a line that wouldn't fit on screen beside the badges
                     // (~180 px each side) ends in "…".
                     readonly property real maxW: island.width - 2 * 180 - 36
-                    implicitWidth: Math.min(lyricMeasure.advanceWidth, maxW)
+                    // No line right now (intro, instrumental gap): only the
+                    // cover-tinted cava behind, at the plain pill's width.
+                    implicitWidth: island.idleLyricsText === "" ? notch.plainPillWidth - 36
+                        : Math.min(lyricMeasure.advanceWidth, maxW)
                     implicitHeight: 20
                     Layout.preferredWidth: implicitWidth
 
