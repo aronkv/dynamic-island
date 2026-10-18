@@ -2,11 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 
-// System monitor (displayState "system", SUPER+M). Header: uptime + load.
-// Six tiles (CPU with per-core bars and clock, GPU, memory, temperature +
-// fan, network, power) carry 60-second sparklines (Shape + PathSvg with a
-// fading gradient fill); then disk usage + read/write throughput and the
-// top processes with a CPU bar each. Esc closes.
+// System monitor (displayState "system", SUPER+M), landscape. Header:
+// uptime + load. Six tiles in a 3×2 grid (CPU with per-core bars and clock,
+// GPU, memory, temperature + fan, network, power) carry 60-second
+// sparklines (Shape + PathSvg with a fading gradient fill); below, the top
+// processes with a CPU bar each (two columns wide) and disk usage +
+// read/write throughput. Every card has a fixed size, so the first data
+// arriving after a cold open (empty process list, no per-core bars) doesn't
+// re-flow the layout. Esc closes.
 FocusScope {
     id: panel
     property var mon: null
@@ -176,7 +179,7 @@ FocusScope {
 
         GridLayout {
             Layout.fillWidth: true
-            columns: 2
+            columns: 3
             rowSpacing: 8
             columnSpacing: 8
 
@@ -282,144 +285,150 @@ FocusScope {
             }
         }
 
-        // Disk: usage bar + live throughput of the root disk.
-        Rectangle {
+        // Top processes (always five rows' height), each with a CPU share
+        // bar, two columns wide; the disk card beside it.
+        RowLayout {
             Layout.fillWidth: true
-            implicitHeight: 58
-            radius: Theme.radiusMedium
-            color: Theme.card
-            clip: true
-
-            Spark {
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                width: parent.width * 0.45
-                height: 30
-                values: panel.mon ? panel.mon.readHist : []
-                maxValue: panel.diskMax
-                lineColor: Theme.blue
-                opacity: 0.8
-            }
-            Spark {
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                width: parent.width * 0.45
-                height: 30
-                values: panel.mon ? panel.mon.writeHist : []
-                maxValue: panel.diskMax
-                lineColor: Theme.orange
-                filled: false
-                opacity: 0.8
-            }
-
-            Column {
-                x: 12
-                y: 9
-                width: parent.width * 0.5
-                spacing: 6
-                RowLayout {
-                    width: parent.width
-                    spacing: 8
-                    Text { text: "DISK" + (panel.mon && panel.mon.rootDisk ? " · " + panel.mon.rootDisk : ""); color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.weight: 600; font.letterSpacing: 0.5; font.family: Theme.fontText }
-                    Item { Layout.fillWidth: true }
-                    Text {
-                        text: panel.mon ? panel.mon.bytes(panel.mon.diskUsed) + " / " + panel.mon.bytes(panel.mon.diskTotal) : ""
-                        color: "#ffffff"
-                        font.pixelSize: 11
-                        font.weight: 600
-                        font.family: Theme.fontText
-                    }
-                }
-                Rectangle {
-                    width: parent.width
-                    height: 6
-                    radius: 3
-                    color: Qt.rgba(1, 1, 1, 0.12)
-                    Rectangle {
-                        width: parent.width * (panel.mon ? panel.mon.diskUsed / Math.max(1, panel.mon.diskTotal) : 0)
-                        height: parent.height
-                        radius: 3
-                        color: "#ffffff"
-                    }
-                }
-                Text {
-                    text: panel.mon ? "Read " + panel.rate(panel.mon.diskRead) + "  ·  Write " + panel.rate(panel.mon.diskWrite) : ""
-                    color: "#ffffff"
-                    opacity: 0.5
-                    font.pixelSize: 10
-                    font.family: Theme.fontText
-                    font.features: { "tnum": 1 }
-                }
-            }
-        }
-
-        // Top processes, each with a CPU share bar.
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: procCol.implicitHeight + 18
-            radius: Theme.radiusMedium
-            color: Theme.card
-            Column {
-                id: procCol
-                x: 12
-                y: 9
-                width: parent.width - 24
-                spacing: 5
-                Text { text: "TOP PROCESSES"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.weight: 600; font.letterSpacing: 0.5; font.family: Theme.fontText }
-                Repeater {
-                    model: panel.mon ? panel.mon.procs : []
-                    Item {
-                        required property var modelData
-                        width: procCol.width
-                        height: 22
-                        RowLayout {
-                            width: parent.width
-                            Text {
-                                text: modelData.name
-                                color: "#ffffff"
-                                font.pixelSize: 12
-                                font.family: Theme.fontText
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
+            spacing: 8
+            Rectangle {
+                // Lines up with the tiles' first two columns.
+                Layout.preferredWidth: (panel.width - 32 - 16) / 3 * 2 + 8
+                Layout.preferredHeight: 166
+                radius: Theme.radiusMedium
+                color: Theme.card
+                Column {
+                    id: procCol
+                    x: 12
+                    y: 9
+                    width: parent.width - 24
+                    spacing: 5
+                    Text { text: "TOP PROCESSES"; color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.weight: 600; font.letterSpacing: 0.5; font.family: Theme.fontText }
+                    Repeater {
+                        model: panel.mon ? panel.mon.procs : []
+                        Item {
+                            required property var modelData
+                            width: procCol.width
+                            height: 22
+                            RowLayout {
+                                width: parent.width
+                                Text {
+                                    text: modelData.name
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    font.family: Theme.fontText
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Text {
+                                    text: modelData.cpu.toFixed(1) + "%"
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    font.weight: 600
+                                    font.family: Theme.fontText
+                                    font.features: { "tnum": 1 }
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.preferredWidth: 52
+                                }
+                                Text {
+                                    text: modelData.mem.toFixed(1) + "% mem"
+                                    color: "#ffffff"
+                                    opacity: 0.45
+                                    font.pixelSize: 11
+                                    font.family: Theme.fontText
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.preferredWidth: 72
+                                }
                             }
-                            Text {
-                                text: modelData.cpu.toFixed(1) + "%"
-                                color: "#ffffff"
-                                font.pixelSize: 12
-                                font.weight: 600
-                                font.family: Theme.fontText
-                                font.features: { "tnum": 1 }
-                                horizontalAlignment: Text.AlignRight
-                                Layout.preferredWidth: 52
-                            }
-                            Text {
-                                text: modelData.mem.toFixed(1) + "% mem"
-                                color: "#ffffff"
-                                opacity: 0.45
-                                font.pixelSize: 11
-                                font.family: Theme.fontText
-                                horizontalAlignment: Text.AlignRight
-                                Layout.preferredWidth: 72
-                            }
-                        }
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            width: parent.width - 130
-                            height: 2
-                            radius: 1
-                            color: Qt.rgba(1, 1, 1, 0.08)
                             Rectangle {
-                                width: parent.width * Math.min(1, modelData.cpu / 100)
-                                height: parent.height
+                                anchors.bottom: parent.bottom
+                                width: parent.width - 130
+                                height: 2
                                 radius: 1
-                                color: panel.accent
-                                opacity: 0.8
-                                Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                                color: Qt.rgba(1, 1, 1, 0.08)
+                                Rectangle {
+                                    width: parent.width * Math.min(1, modelData.cpu / 100)
+                                    height: parent.height
+                                    radius: 1
+                                    color: panel.accent
+                                    opacity: 0.8
+                                    Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                                }
                             }
                         }
                     }
                 }
             }
+            // Disk: usage bar + live throughput of the root disk.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 166
+                radius: Theme.radiusMedium
+                color: Theme.card
+                clip: true
+
+                Spark {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 60
+                    values: panel.mon ? panel.mon.readHist : []
+                    maxValue: panel.diskMax
+                    lineColor: Theme.blue
+                    opacity: 0.8
+                }
+                Spark {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 60
+                    values: panel.mon ? panel.mon.writeHist : []
+                    maxValue: panel.diskMax
+                    lineColor: Theme.orange
+                    filled: false
+                    opacity: 0.8
+                }
+
+                Column {
+                    x: 12
+                    y: 9
+                    width: parent.width - 24
+                    spacing: 6
+                    RowLayout {
+                        width: parent.width
+                        spacing: 8
+                        Text { text: "DISK" + (panel.mon && panel.mon.rootDisk ? " · " + panel.mon.rootDisk : ""); color: "#ffffff"; opacity: 0.45; font.pixelSize: 10; font.weight: 600; font.letterSpacing: 0.5; font.family: Theme.fontText }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: panel.mon ? panel.mon.bytes(panel.mon.diskUsed) + " / " + panel.mon.bytes(panel.mon.diskTotal) : ""
+                            color: "#ffffff"
+                            font.pixelSize: 11
+                            font.weight: 600
+                            font.family: Theme.fontText
+                        }
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: 6
+                        radius: 3
+                        color: Qt.rgba(1, 1, 1, 0.12)
+                        Rectangle {
+                            width: parent.width * (panel.mon ? panel.mon.diskUsed / Math.max(1, panel.mon.diskTotal) : 0)
+                            height: parent.height
+                            radius: 3
+                            color: "#ffffff"
+                        }
+                    }
+                    Text {
+                        text: panel.mon ? "Read " + panel.rate(panel.mon.diskRead) + "  ·  Write " + panel.rate(panel.mon.diskWrite) : ""
+                        color: "#ffffff"
+                        opacity: 0.5
+                        font.pixelSize: 10
+                        font.family: Theme.fontText
+                        font.features: { "tnum": 1 }
+                    }
+                }
+            }
         }
+        Item { Layout.fillHeight: true }
     }
 }

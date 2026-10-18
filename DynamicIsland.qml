@@ -1502,7 +1502,7 @@ PanelWindow {
                 case "launcher": return 540
                 case "notifications": return 460
                 case "activity": return 460
-                case "system": return 500
+                case "system": return 780
                 case "clipboard": return 560
                 case "screenshot": return 220
                 case "localsend": return localSendMonitor.pendingIncoming !== null ? 360 : 280
@@ -1589,7 +1589,7 @@ PanelWindow {
                 case "lowbattery": return island.idleHeight
                 case "power": return 196
                 case "launcher": return 470
-                case "system": return 620
+                case "system": return 430
                 case "activity": return activityStore.timerActive ? (activityStore.recording ? 190 : 150) : (activityStore.recording ? 190 : 150)
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
