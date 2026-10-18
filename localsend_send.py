@@ -4,8 +4,9 @@ one upload per file, all in one session, so the receiver accepts them
 once) to a single already-discovered device.
 
 Usage: localsend_send.py <ip> <port> <protocol> <alias> <deviceModel>
-       <fingerprint> <path> [<path> …] Launched as a fixed argv-list
-Process from LocalSendMonitor.qml (no shell involved, so a hostile filename
+       <fingerprint> <path> [<path> …]
+
+Launched as a fixed argv-list Process from LocalSendMonitor.qml (no shell involved, so a hostile filename
 in argv is not a shell-injection risk) — mirrors localsend_discover.py's
 Round 1 precedent of shelling out to Python for what QML/Quickshell.Io has
 no native primitive for (here: multipart-free raw-body HTTPS POST with an
@@ -19,16 +20,22 @@ text message — a text/plain file whose `preview` carries the text. Receivers
 show it as a message and usually answer 204 (nothing to upload); if one asks
 for the file anyway, the text is uploaded as a .txt.
 
-Prints exactly one JSON line to stdout when done: either
-{"status": "success"} or {"status": "error", "message": "..."}.
+Progress goes to stdout as JSON lines, files indexed in argument order:
+  {"event": "accepted", "indexes": [0, 2]}   files the receiver wants
+  {"event": "progress", "index": 0, "sent": 65536, "size": 133858}
+  {"event": "done", "index": 0}
+The last line is the result: {"status": "success"} or
+{"status": "error", "message": "..."}.
 """
 import sys
 import os
 import json
 import hashlib
+import http.client
 import mimetypes
 import ssl
 import subprocess
+import time
 import urllib.request
 import urllib.error
 import uuid
@@ -85,6 +92,45 @@ def file_meta(file_path):
         "sha256": sha256.hexdigest(),
     }
     return meta, None
+
+
+def emit(obj):
+    print(json.dumps(obj), flush=True)
+
+
+def upload(protocol, ip, port, ctx, path, size, source, on_progress):
+    """POSTs `source` (bytes, or a path to stream) in 64 KB chunks, calling
+    on_progress(sent) at most every 100 ms. Returns the HTTP status."""
+    if protocol == "https":
+        conn = http.client.HTTPSConnection(ip, port, context=ctx, timeout=120)
+    else:
+        conn = http.client.HTTPConnection(ip, port, timeout=120)
+    try:
+        conn.putrequest("POST", path)
+        conn.putheader("Content-Length", str(size))
+        conn.endheaders()
+        sent, last = 0, 0.0
+        f = open(source, "rb") if isinstance(source, str) else None
+        try:
+            data = source if f is None else None
+            while sent < size:
+                chunk = data[sent:sent + 65536] if f is None else f.read(65536)
+                if not chunk:
+                    break
+                conn.send(chunk)
+                sent += len(chunk)
+                now = time.monotonic()
+                if now - last >= 0.1 or sent >= size:
+                    last = now
+                    on_progress(sent)
+        finally:
+            if f:
+                f.close()
+        resp = conn.getresponse()
+        resp.read()
+        return resp.status
+    finally:
+        conn.close()
 
 
 def main():
@@ -186,6 +232,9 @@ def main():
         print(json.dumps({"status": "error", "message": "prepare-upload: missing sessionId/token in response"}))
         return
 
+    ids = list(files)
+    emit({"event": "accepted", "indexes": [i for i, fid in enumerate(ids) if tokens.get(fid)]})
+
     reasons = {
         400: "missing parameters",
         403: "invalid token or IP",
@@ -193,27 +242,24 @@ def main():
         422: "checksum mismatch",
         500: "receiver error",
     }
-    for fid, (path, payload) in files.items():
+    for i, fid in enumerate(ids):
         token = tokens.get(fid)
         if not token:
             continue
-        upload_url = "%s/upload?sessionId=%s&fileId=%s&token=%s" % (base, session_id, fid, token)
-        if payload is not None:
-            file_bytes = payload
-        else:
-            with open(path, "rb") as f:
-                file_bytes = f.read()
-        upload_req = urllib.request.Request(upload_url, data=file_bytes, method="POST")
+        path, payload = files[fid]
+        size = metas[fid]["size"]
+        url = "/api/localsend/v2/upload?sessionId=%s&fileId=%s&token=%s" % (session_id, fid, token)
         try:
-            with urllib.request.urlopen(upload_req, context=ctx, timeout=120) as resp:
-                resp.read()
-        except urllib.error.HTTPError as e:
-            print(json.dumps({"status": "error", "message": "upload: HTTP %d (%s)" % (e.code, reasons.get(e.code, "unknown"))}))
-            return
+            status = upload(protocol, ip, port, ctx, url, size, payload if payload is not None else path,
+                            lambda sent, i=i: emit({"event": "progress", "index": i, "sent": sent, "size": size}))
         except Exception as e:
-            print(json.dumps({"status": "error", "message": "upload failed: %s" % e}))
+            emit({"status": "error", "message": "upload failed: %s" % e})
             return
-    print(json.dumps({"status": "success"}))
+        if status >= 400:
+            emit({"status": "error", "message": "upload: HTTP %d (%s)" % (status, reasons.get(status, "unknown"))})
+            return
+        emit({"event": "done", "index": i})
+    emit({"status": "success"})
 
 
 if __name__ == "__main__":

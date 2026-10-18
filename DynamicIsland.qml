@@ -2321,9 +2321,87 @@ PanelWindow {
                     }
                 }
 
+                // One row per file once a send starts: waiting, the upload
+                // percentage with a thin bar, ✓ when it arrived, or
+                // "Skipped" if the receiver declined that file. Four rows
+                // fit; longer lists scroll to the file being uploaded.
+                ListView {
+                    id: sendList
+                    visible: localSendMonitor.sendStatus !== "" && localSendMonitor.sendItems.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(4, count) * 24
+                    interactive: count > 4
+                    clip: true
+                    // A count, not the array: replacing the array on every
+                    // progress line reset the view to the top each time.
+                    model: localSendMonitor.sendItems.length
+                    readonly property int current: localSendMonitor.sendItems.findIndex(it => it.state === "uploading")
+                    onCurrentChanged: if (current >= 0) positionViewAtIndex(current, ListView.Contain)
+                    delegate: Item {
+                        required property int index
+                        readonly property var modelData: localSendMonitor.sendItems[index] || ({ name: "", size: 0, sent: 0, state: "waiting" })
+                        width: sendList.width
+                        height: 24
+                        readonly property real frac: modelData.size > 0 ? modelData.sent / modelData.size : (modelData.state === "done" ? 1 : 0)
+                        RowLayout {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: -1
+                            spacing: 6
+                            IconImage {
+                                implicitSize: 14
+                                source: "image://icon/" + incomingCard.mimeIcon(modelData.name)
+                                opacity: modelData.state === "skipped" ? 0.4 : 1
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.name
+                                color: "#ffffff"
+                                opacity: modelData.state === "done" || modelData.state === "uploading" ? 1 : 0.5
+                                font.pixelSize: 11
+                                font.family: "SF Pro Display"
+                                elide: Text.ElideMiddle
+                            }
+                            Text {
+                                text: modelData.state === "done" ? "✓"
+                                    : modelData.state === "uploading" ? Math.floor(frac * 100) + "%"
+                                    : modelData.state === "skipped" ? "Skipped" : ""
+                                color: modelData.state === "done" ? "#32d74b" : "#ffffff"
+                                opacity: modelData.state === "skipped" ? 0.5 : 1
+                                font.pixelSize: 11
+                                font.weight: 600
+                                font.family: "SF Pro Display"
+                                font.features: { "tnum": 1 }
+                            }
+                        }
+                        Rectangle {
+                            visible: modelData.state === "uploading"
+                            anchors.left: parent.left
+                            anchors.leftMargin: 20
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 2
+                            height: 2
+                            radius: 1
+                            color: Qt.rgba(1, 1, 1, 0.12)
+                            Rectangle {
+                                width: parent.width * frac
+                                height: parent.height
+                                radius: 1
+                                color: island.accentColor
+                                Behavior on width { NumberAnimation { duration: 120 } }
+                            }
+                        }
+                    }
+                }
+
                 Text {
                     visible: localSendMonitor.sendStatus === "sending"
-                    text: "Sending…"
+                    readonly property var items: localSendMonitor.sendItems
+                    readonly property int finished: items.filter(it => it.state === "done").length
+                    readonly property int wanted: items.filter(it => it.state !== "skipped").length
+                    text: items.length > 1 && finished < wanted ? "Sending " + (finished + 1) + " of " + wanted + "…" : "Sending…"
                     color: "#ffffff"
                     opacity: 0.7
                     font.pixelSize: 12

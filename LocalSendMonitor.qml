@@ -183,13 +183,24 @@ Item {
     // hostile filename/device alias in argv is never a shell-injection risk.
     property string sendStatus: "" // "" | "sending" | "success" | "error"
     property string sendErrorMessage: ""
+    // One entry per file of the current send, in drop order:
+    // { name, size, sent, state: "waiting" | "uploading" | "done" | "skipped" }.
+    // Empty for a text message.
+    property var sendItems: []
+    property var _sendResult: null
+    function _updateItem(i, patch) {
+        if (i < 0 || i >= sendItems.length) return
+        const items = sendItems.slice()
+        items[i] = Object.assign({}, items[i], patch)
+        sendItems = items
+    }
 
     function sendFiles(device, paths) {
         localSendMonitor.sendStatus = "sending"
         localSendMonitor.sendErrorMessage = ""
-        // ponytail: a flat 30 s more per extra file; a progress line from
-        // the helper restarting the timer would fit large files better.
-        sendTimeoutTimer.interval = 20000 + 30000 * Math.max(0, paths.length - 1)
+        localSendMonitor._sendResult = null
+        localSendMonitor.sendItems = paths[0].startsWith("text:") ? []
+            : paths.map(p => ({ name: p.substring(p.lastIndexOf("/") + 1), size: 0, sent: 0, state: "waiting" }))
         sendProc.command = [
             "python3",
             Quickshell.env("HOME") + "/.config/quickshell/localsend_send.py",
@@ -207,7 +218,8 @@ Item {
     // A send that never gets a response (a firewalled/unreachable device,
     // or the helper hanging) used to leave sendStatus stuck on "sending"
     // forever, with no way for the UI to recover. Restarted on every
-    // sendFiles() call, stopped as soon as the process actually finishes
+    // sendFiles() call and on every progress line (so a long upload that
+    // keeps moving never times out), stopped as soon as the process actually finishes
     // (success, a parsed error, or a nonzero exit — see sendProc.onExited)
     // so a fast completion never fires a stale timeout afterward.
     Timer {
@@ -241,16 +253,26 @@ Item {
             waitForEnd: true
         }
 
-        stdout: StdioCollector {
-            id: sendStdout
-            waitForEnd: true
-            // No decision-making here on purpose — confirmed by live testing
-            // that stdout's onTextChanged can fire before stderr's own
-            // waitForEnd has finished flushing, so reading sendStderr.text
-            // from inside this handler intermittently saw stale/empty text.
-            // onExited below fires only once the process has fully
-            // terminated, at which point both collectors are reliably
-            // finalized — all parsing happens there instead.
+        // JSON lines (localsend_send.py): progress events update
+        // sendItems as they come; the final status line is only stored —
+        // the outcome is decided in onExited below, once stderr is complete
+        // too (stdout could finish before stderr was flushed).
+        stdout: SplitParser {
+            onRead: (line) => {
+                let ev = null
+                try { ev = JSON.parse(line) } catch (e) { return }
+                sendTimeoutTimer.restart()
+                if (ev.status) { localSendMonitor._sendResult = ev; return }
+                if (ev.event === "accepted") {
+                    localSendMonitor.sendItems = localSendMonitor.sendItems.map((it, i) =>
+                        Object.assign({}, it, { state: ev.indexes.indexOf(i) >= 0 ? "waiting" : "skipped" }))
+                } else if (ev.event === "progress") {
+                    localSendMonitor._updateItem(ev.index, { state: "uploading", sent: ev.sent, size: ev.size })
+                } else if (ev.event === "done") {
+                    const it = localSendMonitor.sendItems[ev.index]
+                    localSendMonitor._updateItem(ev.index, { state: "done", sent: it ? it.size : 0 })
+                }
+            }
         }
 
         // The single point of truth for outcome, once the process has
@@ -264,11 +286,7 @@ Item {
             sendTimeoutTimer.stop()
             if (localSendMonitor.sendStatus !== "sending") return
 
-            const stdoutText = sendStdout.text ? sendStdout.text.trim() : ""
-            let result = null
-            if (stdoutText.length > 0) {
-                try { result = JSON.parse(stdoutText) } catch (e) { result = null }
-            }
+            const result = localSendMonitor._sendResult
 
             if (result && result.status === "success") {
                 localSendMonitor.sendStatus = "success"
