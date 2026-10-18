@@ -5,9 +5,9 @@
 # installs new app icons, since Quickshell caches icon lookups per process.
 set -u
 
-pkill -x qs
+pkill -x 'qs|quickshell'
 for _ in {1..20}; do
-    pgrep -x qs >/dev/null || break
+    pgrep -x 'qs|quickshell' >/dev/null || break
     sleep 0.1
 done
 
