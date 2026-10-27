@@ -2799,7 +2799,7 @@ PanelWindow {
         BluetoothView {
             anchors.fill: parent
             device: island.bluetoothEventDevice
-            iconName: bluetoothMonitor.iconName(island.bluetoothEventDevice)
+            iconSource: bluetoothMonitor.iconSource(island.bluetoothEventDevice)
             // The ring only when audio now plays through this device.
             volume: volumeMonitor.ready && island.bluetoothEventDevice
                 && String(volumeMonitor.sink.name).indexOf(island.bluetoothEventDevice.address.replace(/:/g, "_")) >= 0

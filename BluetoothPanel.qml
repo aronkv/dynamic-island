@@ -49,13 +49,14 @@ ColumnLayout {
     component RowIcon: Item {
         id: rowIcon
         property string icon: ""
+        property string source: icon !== "" ? "image://icon/" + icon : ""
         property color iconColor: "#ffffff"
         implicitWidth: 16
         implicitHeight: 16
         IconImage {
             id: iconImg
             anchors.fill: parent
-            source: rowIcon.icon !== "" ? "image://icon/" + rowIcon.icon : ""
+            source: rowIcon.source
             visible: false
             layer.enabled: true
             smooth: true
@@ -267,7 +268,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         width: row.hero ? 18 : 16
                         height: width
-                        icon: panel.monitor ? panel.monitor.iconName(row.device) : "bluetooth-symbolic"
+                        source: panel.monitor ? panel.monitor.iconSource(row.device) : "image://icon/bluetooth-symbolic"
                         iconColor: row.hero ? "#000000" : "#ffffff"
                         opacity: row.hero ? 1 : 0.85
                     }

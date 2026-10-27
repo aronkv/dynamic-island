@@ -37,10 +37,16 @@ Item {
 
     // BlueZ names a class icon ("audio-headset"); Adwaita only ships those
     // as colour PNGs, which the flat-white mask turns into a blob, so use
-    // the symbolic variant when the theme has one.
-    function iconName(d) {
-        const name = d && d.icon ? d.icon + "-symbolic" : ""
-        return name !== "" && Quickshell.iconPath(name, true) !== "" ? name : "bluetooth-symbolic"
+    // the symbolic variant when the theme has one. Earbuds report the same
+    // headset/headphones class as over-ear sets, so they're told apart by
+    // name and get the bundled earbuds glyph.
+    function iconSource(d) {
+        if (!d) return "image://icon/bluetooth-symbolic"
+        if ((d.icon === "audio-headset" || d.icon === "audio-headphones")
+            && /buds|pods|earbud|earphone|in-?ear|^WF-|\bTWS\b/i.test(d.deviceName))
+            return Qt.resolvedUrl("earbuds-symbolic.svg")
+        const name = d.icon ? d.icon + "-symbolic" : ""
+        return "image://icon/" + (name !== "" && Quickshell.iconPath(name, true) !== "" ? name : "bluetooth-symbolic")
     }
 
     function setEnabled(enabled) {

@@ -13,7 +13,7 @@ Item {
     id: root
     property bool shown: false
     property var device: null
-    property string iconName: "bluetooth-symbolic"
+    property string iconSource: "image://icon/bluetooth-symbolic"
     property real volume: -1            // 0..1, -1 = not the audio output
 
     readonly property string name: {
@@ -78,7 +78,7 @@ Item {
                 width: 16
                 height: 16
                 implicitSize: 16
-                source: "image://icon/" + root.iconName
+                source: root.iconSource
                 visible: false
                 layer.enabled: true
             }
