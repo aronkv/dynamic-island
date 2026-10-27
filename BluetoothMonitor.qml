@@ -39,12 +39,16 @@ Item {
     // as colour PNGs, which the flat-white mask turns into a blob, so use
     // the symbolic variant when the theme has one. Earbuds report the same
     // headset/headphones class as over-ear sets, so they're told apart by
-    // name and get the bundled earbuds glyph.
+    // name and get the bundled earbuds glyph; same for speakers.
     function iconSource(d) {
         if (!d) return "image://icon/bluetooth-symbolic"
-        if ((d.icon === "audio-headset" || d.icon === "audio-headphones")
-            && /buds|pods|earbud|earphone|in-?ear|^WF-|\bTWS\b/i.test(d.deviceName))
-            return Qt.resolvedUrl("earbuds-symbolic.svg")
+        if (d.icon === "audio-headset" || d.icon === "audio-headphones") {
+            if (/buds|pods|earbud|earphone|in-?ear|^WF-|\bTWS\b/i.test(d.deviceName))
+                return Qt.resolvedUrl("earbuds-symbolic.svg")
+            // Bluetooth speakers/studio monitors often claim a headset class too.
+            if (/speaker|soundbar|soundlink|boombox|monitor|eris/i.test(d.deviceName))
+                return "image://icon/audio-speakers-symbolic"
+        }
         const name = d.icon ? d.icon + "-symbolic" : ""
         return "image://icon/" + (name !== "" && Quickshell.iconPath(name, true) !== "" ? name : "bluetooth-symbolic")
     }

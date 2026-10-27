@@ -148,14 +148,13 @@ ColumnLayout {
         border.width: open ? 0 : 1.2
         border.color: Qt.rgba(1, 1, 1, 0.45)
         Behavior on color { ColorAnimation { duration: 120 } }
-        Text {
+        // Drawn instead of a text "i": the glyph's line box sat off-centre.
+        Column {
             anchors.centerIn: parent
-            text: "i"
-            color: ib.open ? "#000000" : "#ffffff"
+            spacing: 1.5
             opacity: ib.open ? 1 : 0.7
-            font.pixelSize: 12
-            font.weight: 700
-            font.family: "SF Pro Rounded"
+            Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 2.4; height: 2.4; radius: 1.2; color: ib.open ? "#000000" : "#ffffff" }
+            Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 2; height: 6.5; radius: 1; color: ib.open ? "#000000" : "#ffffff" }
         }
         MouseArea {
             id: ibMouse
@@ -242,6 +241,15 @@ ColumnLayout {
             color: Qt.rgba(1, 1, 1, 0.07)
         }
 
+        // Inset and rounded so it never pokes past the card's corners;
+        // covers the expanded actions too.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 4
+            radius: 10
+            color: Qt.rgba(1, 1, 1, rowMouse.containsMouse || row.expanded ? 0.05 : 0)
+        }
+
         ColumnLayout {
             id: rowCol
             width: parent.width
@@ -250,11 +258,6 @@ ColumnLayout {
             Item {
                 Layout.fillWidth: true
                 implicitHeight: row.hero ? 60 : 44
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: Qt.rgba(1, 1, 1, rowMouse.containsMouse ? 0.05 : 0)
-                }
 
                 Rectangle {
                     id: badge
