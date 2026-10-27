@@ -325,33 +325,41 @@ ColumnLayout {
                 }
             }
 
-            RowLayout {
+            // Right-click details: a quick expand/collapse instead of popping in.
+            Item {
                 Layout.fillWidth: true
-                Layout.leftMargin: 14
-                Layout.rightMargin: 14
-                Layout.bottomMargin: 12
-                spacing: 8
-                visible: row.expanded
+                property real reveal: row.expanded ? 1 : 0
+                Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160; easing.type: Easing.OutCubic } }
+                implicitHeight: (detailsBox.implicitHeight + 12) * reveal
+                visible: reveal > 0
+                opacity: reveal
+                clip: true
+                RowLayout {
+                    id: detailsBox
+                    x: 14
+                    width: parent.width - 28
+                    spacing: 8
 
-                PillButton {
-                    label: row.device.connected ? "Disconnect" : "Connect"
-                    primary: !row.device.connected
-                    onClicked: row.device.connected ? row.device.disconnect() : row.device.connect()
-                }
-                Text {
-                    Layout.fillWidth: true
-                    text: row.device.address
-                    color: "#ffffff"
-                    opacity: 0.35
-                    font.pixelSize: 10
-                    font.family: Theme.fontText
-                    elide: Text.ElideRight
-                }
-                PillButton {
-                    visible: row.device.paired
-                    label: "Forget"
-                    destructive: true
-                    onClicked: { row.device.forget(); panel.expandedDeviceAddress = "" }
+                    PillButton {
+                        label: row.device.connected ? "Disconnect" : "Connect"
+                        primary: !row.device.connected
+                        onClicked: row.device.connected ? row.device.disconnect() : row.device.connect()
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: row.device.address
+                        color: "#ffffff"
+                        opacity: 0.35
+                        font.pixelSize: 10
+                        font.family: Theme.fontText
+                        elide: Text.ElideRight
+                    }
+                    PillButton {
+                        visible: row.device.paired
+                        label: "Forget"
+                        destructive: true
+                        onClicked: { row.device.forget(); panel.expandedDeviceAddress = "" }
+                    }
                 }
             }
         }

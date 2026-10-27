@@ -605,71 +605,79 @@ ColumnLayout {
             }
 
             // Details + actions.
-            ColumnLayout {
+            // Right-click details: a quick expand/collapse instead of popping in.
+            Item {
                 Layout.fillWidth: true
-                Layout.leftMargin: 14
-                Layout.rightMargin: 14
-                Layout.bottomMargin: 12
-                spacing: 4
-                visible: row.showDetails
+                property real reveal: row.showDetails ? 1 : 0
+                Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160; easing.type: Easing.OutCubic } }
+                implicitHeight: (detailsBox.implicitHeight + 12) * reveal
+                visible: reveal > 0
+                opacity: reveal
+                clip: true
+                ColumnLayout {
+                    id: detailsBox
+                    x: 14
+                    width: parent.width - 28
+                    spacing: 4
 
-                DetailRow {
-                    label: "Technology"
-                    value: (row.network.connected && row.connInfo) ? row.connInfo.technology : panel.genName(row.network.name)
-                }
-                // The router can be newer than this laptop's adapter (the
-                // T480's Intel 8265 tops out at Wi-Fi 5).
-                DetailRow {
-                    label: "Connected as"
-                    value: row.network.connected && row.connInfo && row.connInfo.linkTechnology
-                        && row.connInfo.linkGeneration !== row.connInfo.apGeneration ? row.connInfo.linkTechnology : ""
-                }
-                DetailRow { label: "Security"; value: row.details ? row.details.security : "" }
-                DetailRow { label: "IP address"; value: (row.network.connected && row.connInfo) ? row.connInfo.ip : "" }
-                DetailRow { label: "Subnet mask"; value: (row.network.connected && row.connInfo) ? row.connInfo.subnet : "" }
-                DetailRow { label: "Router"; value: (row.network.connected && row.connInfo) ? row.connInfo.gateway : "" }
-                DetailRow { label: "Proxy"; value: (row.network.connected && row.connInfo) ? row.connInfo.proxy : "" }
-                DetailRow { label: "IP settings"; value: (row.network.connected && row.connInfo) ? row.connInfo.method : "" }
-                DetailRow { label: "Privacy"; value: (row.network.connected && row.connInfo) ? row.connInfo.privacy : "" }
-                DetailRow { label: "Band"; value: row.details ? row.details.band : "" }
-                DetailRow { label: "Channel"; value: row.details ? row.details.channel : "" }
-                DetailRow { label: "Frequency"; value: row.details ? row.details.freq : "" }
-                DetailRow { label: "Max speed"; value: row.details ? row.details.rate : "" }
-                DetailRow { label: "BSSID"; value: row.details ? row.details.bssid : "" }
+                    DetailRow {
+                        label: "Technology"
+                        value: (row.network.connected && row.connInfo) ? row.connInfo.technology : panel.genName(row.network.name)
+                    }
+                    // The router can be newer than this laptop's adapter (the
+                    // T480's Intel 8265 tops out at Wi-Fi 5).
+                    DetailRow {
+                        label: "Connected as"
+                        value: row.network.connected && row.connInfo && row.connInfo.linkTechnology
+                            && row.connInfo.linkGeneration !== row.connInfo.apGeneration ? row.connInfo.linkTechnology : ""
+                    }
+                    DetailRow { label: "Security"; value: row.details ? row.details.security : "" }
+                    DetailRow { label: "IP address"; value: (row.network.connected && row.connInfo) ? row.connInfo.ip : "" }
+                    DetailRow { label: "Subnet mask"; value: (row.network.connected && row.connInfo) ? row.connInfo.subnet : "" }
+                    DetailRow { label: "Router"; value: (row.network.connected && row.connInfo) ? row.connInfo.gateway : "" }
+                    DetailRow { label: "Proxy"; value: (row.network.connected && row.connInfo) ? row.connInfo.proxy : "" }
+                    DetailRow { label: "IP settings"; value: (row.network.connected && row.connInfo) ? row.connInfo.method : "" }
+                    DetailRow { label: "Privacy"; value: (row.network.connected && row.connInfo) ? row.connInfo.privacy : "" }
+                    DetailRow { label: "Band"; value: row.details ? row.details.band : "" }
+                    DetailRow { label: "Channel"; value: row.details ? row.details.channel : "" }
+                    DetailRow { label: "Frequency"; value: row.details ? row.details.freq : "" }
+                    DetailRow { label: "Max speed"; value: row.details ? row.details.rate : "" }
+                    DetailRow { label: "BSSID"; value: row.details ? row.details.bssid : "" }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 6
-                    spacing: 8
-                    PillButton {
-                        visible: row.network.connected
-                        label: "Disconnect"
-                        onClicked: row.network.disconnect()
-                    }
-                    PillButton {
-                        visible: !row.network.connected
-                        label: "Join"
-                        primary: true
-                        onClicked: panel.activate(row.network)
-                    }
-                    PillButton {
-                        visible: row.network.known
-                        label: "Change Password"
-                        onClicked: {
-                            const opening = panel.modifyNetworkName !== row.network.name
-                            panel.modifyNetworkName = opening ? row.network.name : ""
-                            panel.pendingModifyPassword = ""
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        spacing: 8
+                        PillButton {
+                            visible: row.network.connected
+                            label: "Disconnect"
+                            onClicked: row.network.disconnect()
                         }
-                    }
-                    Item { Layout.fillWidth: true }
-                    PillButton {
-                        visible: row.network.known
-                        label: "Forget"
-                        destructive: true
-                        onClicked: {
-                            if (panel.monitor) panel.monitor.forgetNetwork(row.network.name)
-                            panel.expandedNetworkName = ""
-                            if (panel.modifyNetworkName === row.network.name) panel.modifyNetworkName = ""
+                        PillButton {
+                            visible: !row.network.connected
+                            label: "Join"
+                            primary: true
+                            onClicked: panel.activate(row.network)
+                        }
+                        PillButton {
+                            visible: row.network.known
+                            label: "Change Password"
+                            onClicked: {
+                                const opening = panel.modifyNetworkName !== row.network.name
+                                panel.modifyNetworkName = opening ? row.network.name : ""
+                                panel.pendingModifyPassword = ""
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        PillButton {
+                            visible: row.network.known
+                            label: "Forget"
+                            destructive: true
+                            onClicked: {
+                                if (panel.monitor) panel.monitor.forgetNetwork(row.network.name)
+                                panel.expandedNetworkName = ""
+                                if (panel.modifyNetworkName === row.network.name) panel.modifyNetworkName = ""
+                            }
                         }
                     }
                 }
@@ -1006,8 +1014,9 @@ ColumnLayout {
                         delegate: Item {
                             required property var modelData
                             Layout.fillWidth: true
-                            implicitHeight: panel.expandedNetworkName === modelData.name || panel.modifyNetworkName === modelData.name
-                                ? connRow.implicitHeight - 44 : 0
+                            // Follows the row's own (animated) height, so the
+                            // details also animate closed instead of vanishing.
+                            implicitHeight: Math.max(0, connRow.implicitHeight - 44)
                             clip: true
                             NetworkRow {
                                 id: connRow
