@@ -946,6 +946,30 @@ PanelWindow {
         onTriggered: island.ethernetEventActive = false
     }
 
+    // Bluetooth device connected → brief pill with its icon, name and
+    // battery (BluetoothView). Skipped while the Bluetooth panel is open,
+    // since the panel already shows it. Start-up guard so devices restored
+    // at login/qs restart don't announce themselves.
+    property bool bluetoothEventActive: false
+    property var bluetoothEventDevice: null
+    property bool _bluetoothReady: false
+    Timer { interval: 2500; running: true; onTriggered: island._bluetoothReady = true }
+    Connections {
+        target: bluetoothMonitor
+        function onDeviceConnected(device) {
+            if (!island._bluetoothReady) return
+            if (island.overviewPanelOpen && quickOverviewPanel.activeView === "bluetooth") return
+            island.bluetoothEventDevice = device
+            island.bluetoothEventActive = true
+            bluetoothCollapseTimer.restart()
+        }
+    }
+    Timer {
+        id: bluetoothCollapseTimer
+        interval: 3000
+        onTriggered: island.bluetoothEventActive = false
+    }
+
     function showChargingAnimation() {
         island.chargingActive = true
         chargingCollapseTimer.restart()
@@ -975,6 +999,7 @@ PanelWindow {
         if (capslockActive) return "capslock"
         if (chargingActive) return "charging"
         if (ethernetEventActive) return "ethernet"
+        if (bluetoothEventActive) return "bluetooth"
         if (lowBatteryActive) return "lowbattery"
         if (powerMenuOpen) return "power"
         if (launcherOpen) return "launcher"
@@ -1176,6 +1201,14 @@ PanelWindow {
         function ethernetTest(): void {
             island.ethernetEventActive = true
             ethernetCollapseTimer.restart()
+        }
+        // Shows the Bluetooth pill for the first connected device (test hook).
+        function bluetoothTest(): void {
+            const d = bluetoothMonitor.devices.find(d => d.connected)
+            if (!d) return
+            island.bluetoothEventDevice = d
+            island.bluetoothEventActive = true
+            bluetoothCollapseTimer.restart()
         }
         function share(): void {
             quickOverviewPanel.activeView = "wifi"
@@ -1499,6 +1532,7 @@ PanelWindow {
                 case "brightness": return 300
                 case "charging": return 240
                 case "ethernet": return 250
+                case "bluetooth": return 280
                 case "lowbattery": return 260
                 case "power": return 520
                 case "launcher": return 540
@@ -1588,6 +1622,7 @@ PanelWindow {
                 case "brightness": return 64
                 case "charging": return island.idleHeight
                 case "ethernet": return island.idleHeight
+                case "bluetooth": return island.idleHeight
                 case "lowbattery": return island.idleHeight
                 case "power": return 196
                 case "launcher": return 470
@@ -2739,6 +2774,18 @@ PanelWindow {
             shown: island.displayState === "ethernet"
             connected: networkMonitor.ethernetConnected
             iface: networkMonitor.wiredDevice ? networkMonitor.wiredDevice.name : ""
+            opacity: shown ? 1 : 0
+            scale: shown ? 1 : 0.8
+            visible: opacity > 0
+            FadeBehavior on opacity {}
+            ScaleBehavior on scale {}
+        }
+
+        // Bluetooth device connected — see BluetoothView.qml.
+        BluetoothView {
+            anchors.fill: parent
+            device: island.bluetoothEventDevice
+            shown: island.displayState === "bluetooth"
             opacity: shown ? 1 : 0
             scale: shown ? 1 : 0.8
             visible: opacity > 0

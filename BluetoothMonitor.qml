@@ -20,6 +20,20 @@ Item {
         return list
     }
 
+    // Fires on every disconnected → connected transition, however it was
+    // started (auto-reconnect, the panel, bluetoothctl).
+    signal deviceConnected(var device)
+    Instantiator {
+        model: bluetoothMonitor.adapter ? bluetoothMonitor.adapter.devices : null
+        delegate: Connections {
+            required property var modelData
+            target: modelData
+            function onConnectedChanged() {
+                if (modelData && modelData.connected) bluetoothMonitor.deviceConnected(modelData)
+            }
+        }
+    }
+
     function setEnabled(enabled) {
         if (!adapter) return
         adapter.enabled = enabled

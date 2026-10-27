@@ -113,6 +113,8 @@ works with are in my dotfiles: [aronkv/dotfiles-hyprland](https://github.com/aro
   light runs around its outline, ears included.
 - **Ethernet** — plugging in a network cable shows a compact pill: the wired glyph, "Ethernet" and
   the negotiated link speed ("1 Gbps"); pulling it shows "Disconnected".
+- **Bluetooth** — when a device connects (e.g. headphones reconnecting on their own), a compact pill
+  shows its icon, name and battery. Skipped while the Bluetooth panel is open.
 - **Low battery** — compact pills at 20 / 10 / 5 / 1 % (see above).
 - **Workspaces** — on every switch, dots appear inside the pill and the active one moves with an iOS
   page-control "stretch".
