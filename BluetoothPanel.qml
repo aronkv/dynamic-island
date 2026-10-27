@@ -240,7 +240,9 @@ ColumnLayout {
                     color: row.hero ? "#ffffff" : "transparent"
                     RowIcon {
                         anchors.centerIn: parent
-                        width: row.hero ? 24 : 21
+                        // The earbuds glyph is wider than tall, so it fills less of
+                        // its square slot; drawn larger, still centred on the badge.
+                        width: (row.hero ? 24 : 21) * (String(source).endsWith("earbuds-symbolic.svg") ? 1.25 : 1)
                         height: width
                         source: panel.monitor ? panel.monitor.iconSource(row.device) : "image://icon/bluetooth-symbolic"
                         iconColor: row.hero ? "#000000" : "#ffffff"
