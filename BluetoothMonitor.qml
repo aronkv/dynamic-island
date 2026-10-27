@@ -1,3 +1,4 @@
+import Quickshell
 import Quickshell.Bluetooth
 import QtQuick
 
@@ -32,6 +33,14 @@ Item {
                 if (modelData && modelData.connected) bluetoothMonitor.deviceConnected(modelData)
             }
         }
+    }
+
+    // BlueZ names a class icon ("audio-headset"); Adwaita only ships those
+    // as colour PNGs, which the flat-white mask turns into a blob, so use
+    // the symbolic variant when the theme has one.
+    function iconName(d) {
+        const name = d && d.icon ? d.icon + "-symbolic" : ""
+        return name !== "" && Quickshell.iconPath(name, true) !== "" ? name : "bluetooth-symbolic"
     }
 
     function setEnabled(enabled) {

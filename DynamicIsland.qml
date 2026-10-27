@@ -768,10 +768,24 @@ PanelWindow {
         }
     }
 
+    // Switching the default output (headphones connecting) changes the
+    // volume value without anyone touching it, so changes from a new sink
+    // and for a second after the switch (its volume arrives once it's
+    // ready) don't show the OSD. The sink check is needed too: the volume
+    // binding re-evaluates before onSinkChanged runs.
+    property var _volumeSink: null
+    Timer { id: sinkSwitchQuiet; interval: 1000 }
+    function _volumeFromSwitch() {
+        if (volumeMonitor.sink === island._volumeSink && !sinkSwitchQuiet.running) return false
+        if (volumeMonitor.sink !== island._volumeSink) sinkSwitchQuiet.restart()
+        island._volumeSink = volumeMonitor.sink
+        return true
+    }
     Connections {
         target: volumeMonitor
+        function onSinkChanged() { island._volumeFromSwitch() }
         function onVolumeChanged() {
-            if (!island._volumeReady) return
+            if (island._volumeFromSwitch() || !island._volumeReady) return
             island.volumeActive = true
             volumeCollapseTimer.restart()
             // Mutually exclusive with brightness's OSD — without this, a
@@ -783,7 +797,7 @@ PanelWindow {
             brightnessCollapseTimer.stop()
         }
         function onMutedChanged() {
-            if (!island._volumeReady) return
+            if (island._volumeFromSwitch() || !island._volumeReady) return
             island.volumeActive = true
             volumeCollapseTimer.restart()
             island.brightnessActive = false
@@ -2785,6 +2799,11 @@ PanelWindow {
         BluetoothView {
             anchors.fill: parent
             device: island.bluetoothEventDevice
+            iconName: bluetoothMonitor.iconName(island.bluetoothEventDevice)
+            // The ring only when audio now plays through this device.
+            volume: volumeMonitor.ready && island.bluetoothEventDevice
+                && String(volumeMonitor.sink.name).indexOf(island.bluetoothEventDevice.address.replace(/:/g, "_")) >= 0
+                ? (volumeMonitor.muted ? 0 : volumeMonitor.volume) : -1
             shown: island.displayState === "bluetooth"
             opacity: shown ? 1 : 0
             scale: shown ? 1 : 0.8

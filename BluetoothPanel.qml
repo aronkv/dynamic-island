@@ -267,7 +267,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         width: row.hero ? 18 : 16
                         height: width
-                        icon: row.device.icon || "bluetooth-symbolic"
+                        icon: panel.monitor ? panel.monitor.iconName(row.device) : "bluetooth-symbolic"
                         iconColor: row.hero ? "#000000" : "#ffffff"
                         opacity: row.hero ? 1 : 0.85
                     }
