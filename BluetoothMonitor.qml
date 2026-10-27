@@ -67,14 +67,21 @@ Item {
     // Discovery runs only while the Bluetooth view is open (`scanning`, set
     // by QuickOverviewPanel). Nothing used to stop it, so it ran until the
     // shell exited: battery drain, and discovery degrades Bluetooth audio.
+    // Also visible to other devices (phones) only while the view is open,
+    // like macOS; BlueZ hides it again after its DiscoverableTimeout.
     property bool scanning: false
-    onScanningChanged: if (!scanning && adapter && adapter.discovering) adapter.discovering = false
+    onScanningChanged: {
+        if (scanning || !adapter) return
+        if (adapter.discovering) adapter.discovering = false
+        if (adapter.discoverable) adapter.discoverable = false
+    }
 
     // Toggling discovering off/on forces a fresh scan instead of trusting
     // whatever's already cached — same rationale as NetworkMonitor.rescan().
     function rescan() {
         // Discovery on a powered-off adapter fails ("Resource Not Ready").
         if (!adapter || !adapter.enabled || !scanning) return
+        adapter.discoverable = true
         adapter.discovering = false
         adapter.discovering = true
     }

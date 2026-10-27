@@ -471,7 +471,7 @@ ColumnLayout {
                             font.family: Theme.font
                         }
                         Text {
-                            text: panel.monitor && panel.monitor.adapter && panel.monitor.adapter.name
+                            text: panel.monitor && panel.monitor.adapter && panel.monitor.adapter.discoverable
                                 ? "Visible as “" + panel.monitor.adapter.name + "”" : "Choose a device below"
                             color: "#ffffff"
                             opacity: 0.5
