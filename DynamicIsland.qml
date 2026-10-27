@@ -3620,11 +3620,13 @@ PanelWindow {
             onCloseRequested: island.closeAllPanels()
 
             opacity: island.displayState === "overview" ? 1 : 0
-            scale: island.displayState === "overview" ? 1 : 0.9
+            // Grows with the notch like the full-size panels (see notch.fit);
+            // its own width is the current view's final size.
+            scale: width > 0 ? Math.min(1, notch.width / width) : 1
+            transformOrigin: Item.Top
             visible: opacity > 0
 
             FadeBehavior on opacity {}
-            ScaleBehavior on scale {}
         }
     }
 
