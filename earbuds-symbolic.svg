@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <g fill="#000000">
-    <circle cx="3.9" cy="4.2" r="2.9"/>
-    <rect x="4.6" y="4.2" width="2.1" height="10.6" rx="1.05"/>
-    <circle cx="12.1" cy="4.2" r="2.9"/>
-    <rect x="9.3" y="4.2" width="2.1" height="10.6" rx="1.05"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><g fill="#000000"><path fill-rule="evenodd" transform="rotate(16 4.0 4.3)" d="M1.00 4.30a3.0 2.65 0 1 0 6.0 0a3.0 2.65 0 1 0 -6.0 0zM1.75 4.00a0.8 0.62 0 1 0 1.6 0a0.8 0.62 0 1 0 -1.6 0z"/><rect x="4.55" y="4.6" width="2.05" height="10.2" rx="1.02"/><path fill-rule="evenodd" transform="rotate(-16 12.0 4.3)" d="M9.00 4.30a3.0 2.65 0 1 0 6.0 0a3.0 2.65 0 1 0 -6.0 0zM12.65 4.00a0.8 0.62 0 1 0 1.6 0a0.8 0.62 0 1 0 -1.6 0z"/><rect x="9.40" y="4.6" width="2.05" height="10.2" rx="1.02"/></g></svg>
