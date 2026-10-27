@@ -180,6 +180,8 @@ ColumnLayout {
         clip: true
 
         readonly property bool expanded: panel.expandedDeviceAddress === device.address
+        property real reveal: row.expanded ? 1 : 0
+        Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.InOutCubic } }
         readonly property bool busy: device.pairing || device.state === BluetoothDeviceState.Connecting || device.state === BluetoothDeviceState.Disconnecting
 
         // No connectionFailed-style signal for Bluetooth — infer a failed
@@ -218,7 +220,8 @@ ColumnLayout {
             anchors.fill: parent
             anchors.margins: 4
             radius: 10
-            color: Qt.rgba(1, 1, 1, rowMouse.containsMouse || row.expanded ? 0.05 : 0)
+            // Hover stays instant; the open-details tint fades with the details.
+            color: Qt.rgba(1, 1, 1, rowMouse.containsMouse ? 0.05 : 0.05 * row.reveal)
         }
 
         ColumnLayout {
@@ -328,11 +331,9 @@ ColumnLayout {
             // Right-click details: a quick expand/collapse instead of popping in.
             Item {
                 Layout.fillWidth: true
-                property real reveal: row.expanded ? 1 : 0
-                Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160; easing.type: Easing.OutCubic } }
-                implicitHeight: (detailsBox.implicitHeight + 12) * reveal
-                visible: reveal > 0
-                opacity: reveal
+                implicitHeight: (detailsBox.implicitHeight + 12) * row.reveal
+                visible: row.reveal > 0
+                opacity: row.reveal
                 clip: true
                 RowLayout {
                     id: detailsBox

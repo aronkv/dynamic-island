@@ -11,7 +11,8 @@ Rectangle {
     color: open ? "#ffffff" : (ibMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : "transparent")
     border.width: open ? 0 : 1.2
     border.color: Qt.rgba(1, 1, 1, 0.45)
-    Behavior on color { ColorAnimation { duration: 120 } }
+    // No colour animation: the "i" flips colour instantly, so a fading
+    // fill left it white on white for a moment.
     // Drawn instead of a text "i": the glyph's line box sat off-centre.
     Column {
         anchors.centerIn: parent

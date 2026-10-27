@@ -445,6 +445,8 @@ ColumnLayout {
         readonly property bool connecting: network.stateChanging || network.state === ConnectionState.Connecting
         readonly property bool showPasswordEntry: panel.activeNetworkName === network.name
         readonly property bool showDetails: panel.expandedNetworkName === network.name
+        property real reveal: row.showDetails ? 1 : 0
+        Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.InOutCubic } }
         readonly property bool showModify: panel.modifyNetworkName === network.name
         readonly property var details: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails[network.name] : null
         readonly property var connInfo: (panel.monitor && panel.monitor.wifiDetails) ? panel.monitor.wifiDetails["_connection"] : null
@@ -477,6 +479,16 @@ ColumnLayout {
             color: Qt.rgba(1, 1, 1, 0.07)
         }
 
+        // Inset and rounded so it never pokes past the card's corners;
+        // covers the open details too (same as the Bluetooth rows).
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 4
+            radius: 10
+            // Hover stays instant; the open-details tint fades with the details.
+            color: Qt.rgba(1, 1, 1, rowMouse.containsMouse ? 0.05 : 0.05 * row.reveal)
+        }
+
         ColumnLayout {
             id: rowCol
             width: parent.width
@@ -485,11 +497,6 @@ ColumnLayout {
             Item {
                 Layout.fillWidth: true
                 implicitHeight: 44
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: Qt.rgba(1, 1, 1, rowMouse.containsMouse ? 0.05 : 0)
-                }
 
                 WifiGlyph {
                     id: sig
@@ -608,11 +615,9 @@ ColumnLayout {
             // Right-click details: a quick expand/collapse instead of popping in.
             Item {
                 Layout.fillWidth: true
-                property real reveal: row.showDetails ? 1 : 0
-                Behavior on reveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 160; easing.type: Easing.OutCubic } }
-                implicitHeight: (detailsBox.implicitHeight + 12) * reveal
-                visible: reveal > 0
-                opacity: reveal
+                implicitHeight: (detailsBox.implicitHeight + 12) * row.reveal
+                visible: row.reveal > 0
+                opacity: row.reveal
                 clip: true
                 ColumnLayout {
                     id: detailsBox
