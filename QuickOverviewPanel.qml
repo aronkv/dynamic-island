@@ -44,6 +44,12 @@ Item {
     // synchronously stalled the first frames of the transition.
     onActiveViewChanged: rescanTimer.restart()
     Binding {
+        target: panel.bluetoothMonitor
+        when: panel.bluetoothMonitor !== null
+        property: "scanning"
+        value: panel.panelOpen && panel.activeView === "bluetooth"
+    }
+    Binding {
         target: panel.networkMonitor
         when: panel.networkMonitor !== null
         property: "scanning"

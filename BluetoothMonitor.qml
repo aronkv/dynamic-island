@@ -64,11 +64,17 @@ Item {
         adapter.enabled = enabled
     }
 
+    // Discovery runs only while the Bluetooth view is open (`scanning`, set
+    // by QuickOverviewPanel). Nothing used to stop it, so it ran until the
+    // shell exited: battery drain, and discovery degrades Bluetooth audio.
+    property bool scanning: false
+    onScanningChanged: if (!scanning && adapter && adapter.discovering) adapter.discovering = false
+
     // Toggling discovering off/on forces a fresh scan instead of trusting
     // whatever's already cached — same rationale as NetworkMonitor.rescan().
     function rescan() {
         // Discovery on a powered-off adapter fails ("Resource Not Ready").
-        if (!adapter || !adapter.enabled) return
+        if (!adapter || !adapter.enabled || !scanning) return
         adapter.discovering = false
         adapter.discovering = true
     }
