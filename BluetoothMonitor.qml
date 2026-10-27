@@ -10,7 +10,13 @@ Item {
     readonly property bool discovering: adapter ? adapter.discovering : false
     readonly property int state: adapter ? adapter.state : BluetoothAdapterState.Disabled
 
-    readonly property var devices: {
+    // Debounced like NetworkMonitor.networks: discovery adds devices in
+    // bursts and every change rebuilt all Bluetooth panel rows.
+    property var devices: []
+    on_SortedDevicesChanged: devicesDebounce.restart()
+    Component.onCompleted: devices = _sortedDevices
+    Timer { id: devicesDebounce; interval: 120; onTriggered: bluetoothMonitor.devices = bluetoothMonitor._sortedDevices }
+    readonly property var _sortedDevices: {
         if (!adapter) return []
         const list = adapter.devices.values.slice()
         list.sort((a, b) => {

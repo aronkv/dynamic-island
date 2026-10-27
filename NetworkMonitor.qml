@@ -19,7 +19,10 @@ Item {
     // the nmcli-sourced detail map below once a Wi-Fi device actually
     // exists, since it can't run meaningfully before that.
     onWifiDeviceChanged: if (wifiDevice) { wifiDevice.scannerEnabled = true; refreshDetails() }
-    Component.onCompleted: if (wifiDevice) { wifiDevice.scannerEnabled = true; refreshDetails() }
+    Component.onCompleted: {
+        networks = _sortedNetworks
+        if (wifiDevice) { wifiDevice.scannerEnabled = true; refreshDetails() }
+    }
 
     readonly property var wiredDevice: {
         for (const d of Networking.devices.values) {
@@ -49,7 +52,13 @@ Item {
         return wifiEnabled ? "Not connected" : "Off"
     }
 
-    readonly property var networks: {
+    // Published through a short debounce: a scan changes many networks at
+    // once, and every change rebuilt all Wi-Fi panel rows (8 rebuilds,
+    // ~55 ms, in one rescan — the hitch when opening the Wi-Fi view).
+    property var networks: []
+    on_SortedNetworksChanged: networksDebounce.restart()
+    Timer { id: networksDebounce; interval: 120; onTriggered: networkMonitor.networks = networkMonitor._sortedNetworks }
+    readonly property var _sortedNetworks: {
         if (!wifiDevice) return []
         const list = wifiDevice.networks.values.slice()
         list.sort((a, b) => {

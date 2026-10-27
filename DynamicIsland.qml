@@ -1833,10 +1833,13 @@ PanelWindow {
             // short line shows fewer bars, a long one more, but every bar
             // looks the same. The 20 bands are stretched over however many
             // bars fit, so the spectrum always spans the full width.
-            readonly property int count: Math.max(0, Math.floor((width + 3) / 7))
+            // Counted from the target width, not the springing live one: a
+            // count that changed every frame recreated every bar each frame.
+            readonly property int count: Math.max(0, Math.floor((notch.targetWidth - island.idleHeight + 3) / 7))
             readonly property real barsX: (width - count * 7 + 3) / 2
             Repeater {
-                model: lyricsCava.count
+                // No bars while hidden, so cava's 30 fps updates skip them.
+                model: lyricsCava.visible ? lyricsCava.count : 0
                 Rectangle {
                     required property int index
                     x: lyricsCava.barsX + index * 7
@@ -2909,7 +2912,7 @@ PanelWindow {
             readonly property real barW: (width - 24 - gap * (cavaMonitor.barCount - 1)) / cavaMonitor.barCount
 
             Repeater {
-                model: cavaMonitor.barCount
+                model: mediaViz.visible ? cavaMonitor.barCount : 0
                 Rectangle {
                     required property int index
                     x: 12 + index * (mediaViz.barW + mediaViz.gap)

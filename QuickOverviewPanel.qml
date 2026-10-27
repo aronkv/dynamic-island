@@ -42,9 +42,16 @@ Item {
     signal closeRequested()
     readonly property bool wifiPasswordEntryOpen: wifiPanel.passwordEntryOpen || wifiPanel.modifyEntryOpen
 
-    onActiveViewChanged: {
-        if (activeView === "wifi" && panel.networkMonitor) panel.networkMonitor.rescan()
-        if (activeView === "bluetooth" && panel.bluetoothMonitor) panel.bluetoothMonitor.rescan()
+    // The rescan waits for the view switch to finish: starting it
+    // synchronously stalled the first frames of the transition.
+    onActiveViewChanged: rescanTimer.restart()
+    Timer {
+        id: rescanTimer
+        interval: 350
+        onTriggered: {
+            if (panel.activeView === "wifi" && panel.networkMonitor) panel.networkMonitor.rescan()
+            if (panel.activeView === "bluetooth" && panel.bluetoothMonitor) panel.bluetoothMonitor.rescan()
+        }
     }
 
     // Turning the adapter on goes through a brief "Enabling" transition
