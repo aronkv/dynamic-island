@@ -38,7 +38,7 @@ RowLayout {
         IconImage {
             id: iconImg
             anchors.fill: parent
-            source: "image://icon/" + rowIcon.icon
+            source: rowIcon.icon.indexOf("/") >= 0 ? rowIcon.icon : "image://icon/" + rowIcon.icon
             visible: false
             // Used as MultiEffect's maskSource below — needs a rendered
             // texture to sample (visible:false alone isn't enough), or the
@@ -108,7 +108,13 @@ RowLayout {
             id: battRow
             spacing: 6
 
-            RowIcon { icon: headerRow.batteryMonitor ? headerRow.batteryMonitor.iconName : "battery-symbolic" }
+            // Plugged in: a charger plug (as on the charge badge) instead of the
+            // battery-with-bolt glyph.
+            RowIcon {
+                icon: !headerRow.batteryMonitor ? "battery-symbolic"
+                    : headerRow.batteryMonitor.pluggedIn ? Qt.resolvedUrl("charger-symbolic.svg")
+                    : headerRow.batteryMonitor.iconName
+            }
 
             Text {
                 text: headerRow.batteryMonitor ? Math.round(headerRow.batteryMonitor.percentage) + "%" : "—"
