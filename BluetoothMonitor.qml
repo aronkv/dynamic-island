@@ -47,7 +47,7 @@ Item {
                 return Qt.resolvedUrl("earbuds-symbolic.svg")
             // Bluetooth speakers/studio monitors often claim a headset class too.
             if (/speaker|soundbar|soundlink|boombox|monitor|eris/i.test(d.deviceName))
-                return "image://icon/audio-speakers-symbolic"
+                return Qt.resolvedUrl("speaker-symbolic.svg")
         }
         const name = d.icon ? d.icon + "-symbolic" : ""
         return "image://icon/" + (name !== "" && Quickshell.iconPath(name, true) !== "" ? name : "bluetooth-symbolic")

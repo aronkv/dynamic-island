@@ -151,10 +151,11 @@ ColumnLayout {
         // Drawn instead of a text "i": the glyph's line box sat off-centre.
         Column {
             anchors.centerIn: parent
-            spacing: 1.5
+            spacing: 2
             opacity: ib.open ? 1 : 0.7
-            Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 2.4; height: 2.4; radius: 1.2; color: ib.open ? "#000000" : "#ffffff" }
-            Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 2; height: 6.5; radius: 1; color: ib.open ? "#000000" : "#ffffff" }
+            // Whole-pixel sizes, same width: the dot stays over the stem.
+            Rectangle { width: 2; height: 2; radius: 1; color: ib.open ? "#000000" : "#ffffff" }
+            Rectangle { width: 2; height: 6; radius: 1; color: ib.open ? "#000000" : "#ffffff" }
         }
         MouseArea {
             id: ibMouse
