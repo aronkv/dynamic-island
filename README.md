@@ -356,7 +356,7 @@ Relative to `~/.config/quickshell/` unless the path says otherwise.
   `DynamicIsland.qml`. The sources are MPRIS, PipeWire, UPower/sysfs, NetworkManager, BlueZ, cava,
   weather (Wi-Fi location via `wifi_locate.py`, IP fallback), clipboard, notifications, activities
   and LocalSend.
-- **Panels** (`*Panel.qml`) live in `QuickOverviewPanel.qml` (push/pop sub-views) or directly in the
+- **Panels** (`*Panel.qml`) live in `QuickOverviewPanel.qml` (crossfading sub-views) or directly in the
   island (launcher, power, clipboard, notifications, system, activity).
 - **Shared pieces:** `Theme.qml` (design tokens, reduce motion), `PanelHeader.qml`,
   `ToggleSwitch.qml`, `CalcEngine.qml` + `CalcSmart.js` (parser, no `eval`), `ThemePalette.js`,

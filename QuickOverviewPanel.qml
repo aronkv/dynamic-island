@@ -18,16 +18,7 @@ Item {
     property var wallpaperMonitor: null
     property var calendarStore: null
     property string activeView: "overview"
-    // Push/pop slides only for navigation inside an already-open panel.
-    // Opening straight into a sub-view (SUPER+I, IPC…) sets activeView in
-    // the same tick as the open, so it must appear in place, not slide in.
     property bool panelOpen: false
-    property bool slideEnabled: false
-    onPanelOpenChanged: {
-        if (panelOpen) slideArm.restart()
-        else { slideArm.stop(); slideEnabled = false }
-    }
-    Timer { id: slideArm; interval: 60; onTriggered: panel.slideEnabled = true }
     property bool mediaPlaying: false
     readonly property bool calcHistoryVisible: calculatorPanel.historyVisible
     readonly property bool calcGraphVisible: calculatorPanel.graphVisible
@@ -299,12 +290,6 @@ Item {
         spacing: 8
         opacity: panel.activeView === "overview" ? 1 : 0
         scale: panel.activeView === "overview" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "overview" ? 0 : -Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -406,12 +391,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "battery" ? 1 : 0
         scale: panel.activeView === "battery" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "battery" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -435,12 +414,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "wifi" ? 1 : 0
         scale: panel.activeView === "wifi" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "wifi" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -464,12 +437,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "bluetooth" ? 1 : 0
         scale: panel.activeView === "bluetooth" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "bluetooth" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -500,12 +467,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "settings" ? 1 : 0
         scale: panel.activeView === "settings" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "settings" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -529,12 +490,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "calculator" ? 1 : 0
         scale: panel.activeView === "calculator" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "calculator" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -558,12 +513,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "calendar" ? 1 : 0
         scale: panel.activeView === "calendar" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "calendar" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -586,12 +535,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "weather" ? 1 : 0
         scale: panel.activeView === "weather" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "weather" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -614,12 +557,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "theme" ? 1 : 0
         scale: panel.activeView === "theme" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "theme" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -644,12 +581,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "wallpaper" ? 1 : 0
         scale: panel.activeView === "wallpaper" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "wallpaper" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -672,12 +603,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "shortcuts" ? 1 : 0
         scale: panel.activeView === "shortcuts" ? 1 : 0.97
-        // Push/pop: sub-views slide in from the right, the root overview
-        // slides out to the left.
-        transform: Translate {
-            x: panel.activeView === "shortcuts" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
@@ -702,10 +627,6 @@ Item {
         spacing: 10
         opacity: panel.activeView === "tray" ? 1 : 0
         scale: panel.activeView === "tray" ? 1 : 0.97
-        transform: Translate {
-            x: panel.activeView === "tray" ? 0 : Theme.panelSlide
-            Behavior on x { enabled: panel.slideEnabled; NumberAnimation { duration: Theme.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
-        }
         visible: opacity > 0
 
         FadeBehavior on opacity {}
