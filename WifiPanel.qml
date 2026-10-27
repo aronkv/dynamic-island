@@ -438,6 +438,8 @@ ColumnLayout {
         id: row
         property var network: null
         property bool first: false
+        // Header hidden (the hero card's details): no row tint, the card is the box.
+        property bool headless: false
         Layout.fillWidth: true
         implicitHeight: rowCol.implicitHeight
         clip: true
@@ -482,6 +484,7 @@ ColumnLayout {
         // Inset and rounded so it never pokes past the card's corners;
         // covers the open details too (same as the Bluetooth rows).
         Rectangle {
+            visible: !row.headless
             anchors.fill: parent
             anchors.margins: 4
             radius: 10
@@ -1021,14 +1024,28 @@ ColumnLayout {
                             Layout.fillWidth: true
                             // Follows the row's own (animated) height, so the
                             // details also animate closed instead of vanishing.
-                            implicitHeight: Math.max(0, connRow.implicitHeight - 44)
+                            implicitHeight: Math.max(0, connRow.implicitHeight - 44 + 10 * connRow.reveal)
                             clip: true
-                            NetworkRow {
-                                id: connRow
-                                y: -44
+                            Rectangle {
+                                x: 14
+                                width: parent.width - 28
+                                height: 1
+                                color: Qt.rgba(1, 1, 1, 0.07)
+                                opacity: connRow.reveal
+                            }
+                            Item {
+                                y: 10 * connRow.reveal
                                 width: parent.width
-                                network: modelData
-                                first: true
+                                height: parent.height - y
+                                clip: true
+                                NetworkRow {
+                                    id: connRow
+                                    y: -44
+                                    width: parent.width
+                                    network: modelData
+                                    first: true
+                                    headless: true
+                                }
                             }
                         }
                     }
