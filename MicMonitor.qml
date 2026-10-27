@@ -27,21 +27,30 @@ Item {
 
     // Secondary pactl-based check, OR'd into `active` below — a fallback
     // for a capture stream that for whatever reason doesn't register
-    // cleanly through Quickshell's own Pipewire node binding. Same 2000ms
-    // polling pattern as CameraMonitor.qml's fuser-based check; a plain
-    // argv-list command since there's no shell feature needed here (no
-    // pipes/redirects), unlike fuser's stderr-silencing.
+    // cleanly through Quickshell's own Pipewire node binding.
     property bool _pactlActive: false
 
     readonly property bool active: pipewireActive || _pactlActive
 
-    Timer {
-        interval: 2000
+    // Event-driven: `pactl subscribe` reports every source / source-output
+    // change, and only then is the state re-read (was a 2 s poll). Restarted
+    // if it exits (PipeWire restart).
+    Process {
+        id: subscribeProc
         running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: checkProc.running = true
+        command: ["pactl", "subscribe"]
+        stdout: SplitParser {
+            onRead: (line) => { if (line.indexOf("source") !== -1) recheck.restart() }
+        }
+        onRunningChanged: if (!running) resubscribe.restart()
     }
+    Timer { id: resubscribe; interval: 2000; onTriggered: { subscribeProc.running = true; recheck.restart() } }
+    Timer {
+        id: recheck
+        interval: 150
+        onTriggered: if (!checkProc.running) checkProc.running = true; else restart()
+    }
+    Component.onCompleted: checkProc.running = true
 
     // A plain "any source-output exists" check (the original version of
     // this file) false-positived as soon as cava ran: it captures audio to

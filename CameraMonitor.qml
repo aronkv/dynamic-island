@@ -13,12 +13,28 @@ Item {
     property bool _active: false
     property bool _foundThisRun: false
 
+    // fuser walks every process's open files (~30 ms CPU per run). The
+    // webcam's USB runtime-PM state is a cheap file read: uvcvideo wakes the
+    // device on open(), so "suspended" means nobody has it open and fuser is
+    // skipped. Any other state (or no such file) falls back to fuser.
+    FileView {
+        id: pmState
+        path: "/sys/class/video4linux/video0/device/../power/runtime_status"
+        blockLoading: true
+        printErrors: false
+    }
+
     Timer {
         interval: 2000
         running: true
         repeat: true
         triggeredOnStart: true
         onTriggered: {
+            pmState.reload()
+            if (pmState.text().trim() === "suspended") {
+                cameraMonitor._active = false
+                return
+            }
             cameraMonitor._foundThisRun = false
             checkProc.running = true
         }
