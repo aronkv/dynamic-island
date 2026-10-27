@@ -402,9 +402,7 @@ ColumnLayout {
             : "On"
         showToggle: true
         toggleChecked: panel.monitor ? panel.monitor.enabled : false
-        showRefresh: panel.on
         onToggled: if (panel.monitor) panel.monitor.setEnabled(!panel.monitor.enabled)
-        onRefreshRequested: if (panel.monitor) panel.monitor.rescan()
         onSettingsRequested: panel.settingsRequested()
         onCloseRequested: panel.closeRequested()
     }

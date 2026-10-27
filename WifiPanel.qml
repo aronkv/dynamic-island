@@ -755,9 +755,7 @@ ColumnLayout {
             : panel.current ? panel.current.name : (panel.monitor.networks.length + " networks nearby")
         showToggle: true
         toggleChecked: panel.monitor ? panel.monitor.wifiEnabled : false
-        showRefresh: panel.monitor ? panel.monitor.wifiEnabled : false
         onToggled: if (panel.monitor) panel.monitor.setWifiEnabled(!panel.monitor.wifiEnabled)
-        onRefreshRequested: if (panel.monitor) panel.monitor.rescan()
         onSettingsRequested: panel.settingsRequested()
         onCloseRequested: panel.closeRequested()
     }
