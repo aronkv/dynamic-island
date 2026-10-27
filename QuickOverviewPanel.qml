@@ -19,6 +19,16 @@ Item {
     property var calendarStore: null
     property string activeView: "overview"
     property bool panelOpen: false
+    // On a switch the panel takes the new view's size at once (so the
+    // incoming view lays out at its final size from its first frame); the
+    // view being left keeps the size it had (DynamicIsland sets outView /
+    // outW / outH) instead of re-laying out — the Wi-Fi list vanished in
+    // a frame when going back to the smaller overview.
+    property string outView: ""
+    property real outW: 0
+    property real outH: 0
+    Item { id: outBox; x: (panel.width - panel.outW) / 2; width: panel.outW; height: panel.outH }
+    function boxFor(view) { return outView === view && activeView !== view ? outBox : panel }
     property bool mediaPlaying: false
     readonly property bool calcHistoryVisible: calculatorPanel.historyVisible
     readonly property bool calcGraphVisible: calculatorPanel.graphVisible
@@ -282,7 +292,7 @@ Item {
 
     ColumnLayout {
         id: overviewContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("overview")
         anchors.topMargin: 18
         anchors.bottomMargin: 18
         anchors.leftMargin: 20
@@ -386,7 +396,7 @@ Item {
 
     ColumnLayout {
         id: batteryContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("battery")
         anchors.margins: 24
         spacing: 10
         opacity: panel.activeView === "battery" ? 1 : 0
@@ -409,7 +419,7 @@ Item {
 
     ColumnLayout {
         id: wifiContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("wifi")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "wifi" ? 1 : 0
@@ -432,7 +442,7 @@ Item {
 
     ColumnLayout {
         id: bluetoothContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("bluetooth")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "bluetooth" ? 1 : 0
@@ -485,7 +495,7 @@ Item {
 
     ColumnLayout {
         id: calculatorContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("calculator")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "calculator" ? 1 : 0
@@ -508,7 +518,7 @@ Item {
 
     ColumnLayout {
         id: calendarContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("calendar")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "calendar" ? 1 : 0
@@ -530,7 +540,7 @@ Item {
 
     ColumnLayout {
         id: weatherContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("weather")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "weather" ? 1 : 0
@@ -552,7 +562,7 @@ Item {
 
     ColumnLayout {
         id: themeContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("theme")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "theme" ? 1 : 0
@@ -576,7 +586,7 @@ Item {
 
     ColumnLayout {
         id: wallpaperContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("wallpaper")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "wallpaper" ? 1 : 0
@@ -598,7 +608,7 @@ Item {
 
     ColumnLayout {
         id: shortcutsContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("shortcuts")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "shortcuts" ? 1 : 0
@@ -622,7 +632,7 @@ Item {
 
     ColumnLayout {
         id: trayContent
-        anchors.fill: parent
+        anchors.fill: panel.boxFor("tray")
         anchors.margins: 14
         spacing: 10
         opacity: panel.activeView === "tray" ? 1 : 0

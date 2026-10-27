@@ -1324,6 +1324,11 @@ PanelWindow {
         // now-playing card appears immediately instead of the plain root;
         // the root is still reachable via the media card's own close (X).
         // Open a specific overview sub-view ("wifi", "bluetooth", …).
+        // Switches the view inside the already-open overview, like clicking
+        // a row (test hook for the in-panel transition).
+        function navigate(view: string): void {
+            if (island.overviewPanelOpen) quickOverviewPanel.activeView = view
+        }
         function open(view: string): void {
             island.closeAllPanels()
             quickOverviewPanel.activeView = view
@@ -1505,7 +1510,11 @@ PanelWindow {
         // only changes the target size, not the state.
         Connections {
             target: quickOverviewPanel
-            function onActiveViewChanged() { if (notch.morphState === "overview") notch.morphKind = "switch" }
+            function onActiveViewChanged() {
+                if (notch.morphState === "overview") notch.morphKind = "switch"
+                // Also when both views share a size (no size change fires).
+                notch._applyOverviewSize()
+            }
         }
         Timer {
             id: morphDelay
@@ -3587,8 +3596,15 @@ PanelWindow {
         // layout happens before the frame starts to grow.
         readonly property real _overviewW: island.displayState === "overview" ? notch.widthFor("overview") : 0
         readonly property real _overviewH: island.displayState === "overview" ? notch.heightFor("overview") : 0
+        property string _appliedView: ""
         function _applyOverviewSize() {
             if (island.displayState !== "overview") return
+            if (quickOverviewPanel.activeView !== notch._appliedView) {
+                quickOverviewPanel.outView = notch._appliedView
+                quickOverviewPanel.outW = quickOverviewPanel.width
+                quickOverviewPanel.outH = quickOverviewPanel.height
+                notch._appliedView = quickOverviewPanel.activeView
+            }
             quickOverviewPanel.width = notch._overviewW
             quickOverviewPanel.height = notch._overviewH
         }
@@ -3622,7 +3638,9 @@ PanelWindow {
             opacity: island.displayState === "overview" ? 1 : 0
             // Grows with the notch like the full-size panels (see notch.fit);
             // its own width is the current view's final size.
-            scale: width > 0 ? Math.min(1, notch.width / width) : 1
+            // Not while switching views: the panel already has the new
+            // view's size, so the old view shrank in one frame.
+            scale: notch.morphKind === "switch" || width <= 0 ? 1 : Math.min(1, notch.width / width)
             transformOrigin: Item.Top
             visible: opacity > 0
 
