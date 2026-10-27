@@ -43,6 +43,12 @@ Item {
     // The rescan waits for the view switch to finish: starting it
     // synchronously stalled the first frames of the transition.
     onActiveViewChanged: rescanTimer.restart()
+    Binding {
+        target: panel.networkMonitor
+        when: panel.networkMonitor !== null
+        property: "scanning"
+        value: panel.panelOpen && panel.activeView === "wifi"
+    }
     Timer {
         id: rescanTimer
         interval: 350

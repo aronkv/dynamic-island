@@ -13,15 +13,18 @@ Item {
         return null
     }
 
-    // Quickshell doesn't scan for networks unless told to — without this,
-    // wifiDevice.networks stays empty even though real networks are visible
-    // system-wide (confirmed via `nmcli dev wifi list`). Also (re)fetches
-    // the nmcli-sourced detail map below once a Wi-Fi device actually
-    // exists, since it can't run meaningfully before that.
-    onWifiDeviceChanged: if (wifiDevice) { wifiDevice.scannerEnabled = true; refreshDetails() }
+    // Quickshell only lists nearby unknown networks while its scanner runs
+    // (the connected and saved ones stay listed without it). The scanner
+    // runs only while the Wi-Fi view is open (`scanning`, set by
+    // QuickOverviewPanel): left on, it rescanned in the background and the
+    // hidden Wi-Fi rows were rebuilt every ~12 s. The nmcli detail map is
+    // (re)fetched once a Wi-Fi device exists.
+    property bool scanning: false
+    onScanningChanged: if (wifiDevice) wifiDevice.scannerEnabled = scanning
+    onWifiDeviceChanged: if (wifiDevice) { wifiDevice.scannerEnabled = scanning; refreshDetails() }
     Component.onCompleted: {
         networks = _sortedNetworks
-        if (wifiDevice) { wifiDevice.scannerEnabled = true; refreshDetails() }
+        if (wifiDevice) refreshDetails()
     }
 
     readonly property var wiredDevice: {
@@ -74,8 +77,10 @@ Item {
     // doesn't sit stale on whatever was cached when scanning first turned on.
     function rescan() {
         if (!wifiDevice) return
-        wifiDevice.scannerEnabled = false
-        wifiDevice.scannerEnabled = true
+        if (scanning) {
+            wifiDevice.scannerEnabled = false
+            wifiDevice.scannerEnabled = true
+        }
         refreshDetails()
     }
 
