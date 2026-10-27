@@ -1513,14 +1513,13 @@ PanelWindow {
             onTriggered: notch._setMorph(island.displayState)
         }
         readonly property real targetWidth: widthFor(notch.morphState)
-        // Full-size panels are laid out at their final width and revealed
-        // by the widening notch, so text near their edges showed up cut
-        // mid-word ("…ions") while it opened. Their opacity also follows
-        // the notch's width, fading in over its last 15 % (edge text only
-        // fits from ~93 %).
-        function reveal(state) {
-            const t = Math.max(0, Math.min(1, (width / widthFor(state) - 0.85) / 0.15))
-            return t * t * (3 - 2 * t)
+        // Full-size panels are laid out at their final width; revealed by
+        // the widening notch alone, text near their edges showed up cut
+        // mid-word ("…ions") while it opened. Scaling them with the notch's
+        // width (top-anchored, no relayout) keeps the whole panel inside it,
+        // so it grows out of the pill instead.
+        function fit(state) {
+            return Math.min(1, width / widthFor(state))
         }
         function widthFor(state) {
             switch (state) {
@@ -3431,10 +3430,10 @@ PanelWindow {
             onCloseRequested: island.systemOpen = false
             property real _fade: island.displayState === "system" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("system")
-            scale: island.displayState === "system" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("system")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         ActivityPanel {
@@ -3452,10 +3451,10 @@ PanelWindow {
             onCloseRequested: island.activityOpen = false
             property real _fade: island.displayState === "activity" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("activity")
-            scale: island.displayState === "activity" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("activity")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         NotificationsPanel {
@@ -3472,10 +3471,10 @@ PanelWindow {
             onCloseRequested: island.notificationsOpen = false
             property real _fade: island.displayState === "notifications" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("notifications")
-            scale: island.displayState === "notifications" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("notifications")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         // Unread-notifications dot in the idle pill's top-right corner.
@@ -3508,10 +3507,10 @@ PanelWindow {
             onCloseRequested: island.launcherOpen = false
             property real _fade: island.displayState === "launcher" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("launcher")
-            scale: island.displayState === "launcher" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("launcher")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         ClipboardPanel {
@@ -3529,10 +3528,10 @@ PanelWindow {
             onCloseRequested: island.clipboardOpen = false
             property real _fade: island.displayState === "clipboard" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("clipboard")
-            scale: island.displayState === "clipboard" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("clipboard")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         PowerMenu {
@@ -3550,10 +3549,10 @@ PanelWindow {
             onLockRequested: lockScreen.lock()
             property real _fade: island.displayState === "power" ? 1 : 0
             FadeBehavior on _fade {}
-            opacity: _fade * notch.reveal("power")
-            scale: island.displayState === "power" ? 1 : 0.9
+            opacity: _fade
+            scale: notch.fit("power")
+            transformOrigin: Item.Top
             visible: opacity > 0
-            ScaleBehavior on scale {}
         }
 
         // Animated sky behind the Weather sub-view (WeatherBackdrop.qml).
