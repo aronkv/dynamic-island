@@ -120,20 +120,6 @@ PanelWindow {
     readonly property color artAccent: mprisMonitor.anyPlayer && mprisMonitor.anyPlayer.trackArtUrl
         ? artColor.color : accentColor
 
-    // Text/icon color to put ON TOP of a filled accentColor background —
-    // the accent is user-configurable via the Theme system (defaults to
-    // white, per the settings.json "themeAccent" default), so a hardcoded
-    // white label goes invisible on it. Real bug found live: the LocalSend
-    // incoming-transfer "Accept" button filled with accentColor and had a
-    // hardcoded white "Accept" label, so with the (default) white accent
-    // the button rendered with no visible text at all. Standard luminance
-    // formula picks black or white, whichever actually contrasts.
-    readonly property color accentContrastColor: {
-        const c = island.accentColor
-        const luminance = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
-        return luminance > 0.5 ? "#000000" : "#ffffff"
-    }
-
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell:dynamic-island"
 
@@ -476,7 +462,6 @@ PanelWindow {
     // Exclusive panels (launcher, clipboard, notifications, activity,
     // system, power): same key closes; another panel's key collapses the
     // open one, then opens it (see _switchVia).
-    readonly property var _exclusiveFlags: ["powerMenuOpen", "launcherOpen", "clipboardOpen", "notificationsOpen", "activityOpen", "systemOpen"]
     function toggleExclusive(flag) {
         if (island[flag]) { switchOpenTimer.stop(); island.closeAllPanels(); return }
         island._switchVia(function() {

@@ -46,11 +46,6 @@ Item {
     readonly property string wifiGen: primaryType === "wifi" && wifiDetails._connection && wifiDetails._connection.apGeneration
         ? String(wifiDetails._connection.apGeneration) : ""
     readonly property string primaryIcon: primaryType === "ethernet" ? "network-wired-symbolic" : "network-wireless-symbolic"
-    readonly property string primaryLabel: {
-        if (primaryType === "ethernet") return "Ethernet"
-        if (primaryType === "wifi") return activeWifiNetwork.name
-        return wifiEnabled ? "Not connected" : "Off"
-    }
 
     // Published through a short debounce: a scan changes many networks at
     // once, and every change rebuilt all Wi-Fi panel rows (8 rebuilds,

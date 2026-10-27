@@ -12,7 +12,6 @@ Item {
 
     readonly property real percentage: device ? device.percentage * 100 : 0
     readonly property int state: device ? device.state : UPowerDeviceState.Unknown
-    readonly property string stateText: device ? UPowerDeviceState.toString(device.state) : "Unknown"
     readonly property bool healthSupported: device ? device.healthSupported : false
     readonly property real healthPercentage: device ? device.healthPercentage : 0
     readonly property real timeToEmpty: device ? device.timeToEmpty : 0

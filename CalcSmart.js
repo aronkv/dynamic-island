@@ -128,6 +128,10 @@ function addSpan(date, n, unit) {
 
 function plural(n, w) { return n + " " + w + (Math.abs(n) === 1 ? "" : "s") }
 
+// Holidays and weekdays that answer on their own ("christmas" → its date).
+// Seasons are left out: "fall" or "summer" alone is more likely a search.
+const BARE_DAY = /^(christmas( eve)?|xmas|easter|new year'?s?( eve)?|nye|halloween|valentine'?s?( day)?|(sun|mon|tues|wednes|thurs|fri|satur)day)$/
+
 function parseDateQuery(input, now) {
     const s = input.trim().toLowerCase().replace(/^how many\s+/, "").replace(/\s+are\s+there|\s+is\s+it|\s+left/g, "")
     let m = s.match(/^((?:sun|mon|tues|wednes|thurs|fri|satur)days)\s+(until|till|til|to|before|since|from|after)\s+(.+)$/)
@@ -361,17 +365,8 @@ function parseUnits(input) {
     return { kind: "unit", text: fmtNum(r, dec) + " " + nm(ub.name, r), sub: fmtNum(value, 6) + " " + nm(ua.name, value) + " = " + fmtNum(r, 8) + " " + nm(ub.name, r), value: r, copy: String(Math.round(r * 1e8) / 1e8) }
 }
 
-// Holidays and weekdays that answer on their own ("christmas" → its date).
-// Seasons are left out: "fall" or "summer" alone is more likely a search.
-const BARE_DAY = /^(christmas( eve)?|xmas|easter|new year'?s?( eve)?|nye|halloween|valentine'?s?( day)?|(sun|mon|tues|wednes|thurs|fri|satur)day)$/
-
 // Entry point. `rates`: { CODE: per-EUR rate } or null while loading.
 function smart(input, rates, now) {
     if (!input || !(/\d|until|\btill?\b|since|when is|what day/i.test(input) || BARE_DAY.test(input.trim().toLowerCase()))) return null
     return parseDateQuery(input, now || new Date()) || parseCurrency(input, rates) || parseUnits(input)
-}
-
-// True when the input looks like it needs currency rates.
-function wantsRates(input) {
-    return /[$€£¥]|\b(usd|eur|huf|ft|gbp|chf|jpy|czk|pln|ron|dollars?|euros?|forints?|[a-z]{3})\b/i.test(input)
 }

@@ -17,8 +17,6 @@ Singleton {
     readonly property color cardElevated: "#2c2c2e"
     readonly property color separator: "#38383a"
     readonly property color text: "#ffffff"
-    readonly property real textSecondaryOpacity: 0.6
-    readonly property real textTertiaryOpacity: 0.35
     readonly property color green: "#32d74b"
     readonly property color red: "#ff453a"
     readonly property color orange: "#ff9f0a"
@@ -28,12 +26,9 @@ Singleton {
     // Radii
     readonly property int radiusSmall: 8
     readonly property int radiusMedium: 12
-    readonly property int radiusLarge: 18
 
-    // Motion. The island morph is a timed OutCubic (DynamicIsland
-    // notch.morphDuration: 400 ms open (OutQuad), 180 ms into the pill (OutCubic), 200 ms OSD);
-    // content fades use a short ease-out.
-    readonly property int fadeDuration: 220
+    // Motion. The island morph's timings live in DynamicIsland
+    // (notch.morphDuration / morphEasing, keyed on notch.morphKind).
     readonly property int contentScaleDuration: 380
 
     // Settings → Reduce motion (bound from DynamicIsland to settingsStore):

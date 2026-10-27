@@ -31,8 +31,6 @@ Item {
     function boxFor(view) { return outView === view && activeView !== view ? outBox : panel }
     property bool mediaPlaying: false
     readonly property bool calcHistoryVisible: calculatorPanel.historyVisible
-    readonly property bool calcGraphVisible: calculatorPanel.graphVisible
-    readonly property bool calcSubVisible: calculatorPanel.subVisible
     readonly property real calcNaturalHeight: calculatorPanel.naturalHeight
     readonly property real trayNaturalHeight: trayPanel.naturalHeight
     function wifiShare() { wifiPanel.toggleShare() }

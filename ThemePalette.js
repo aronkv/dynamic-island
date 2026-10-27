@@ -18,8 +18,6 @@ function hslToRgb(h, s, l) {
 }
 function lum(hex) { const c = hexToRgb(hex).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
 function contrast(a, b) { const la = lum(a), lb = lum(b); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05) }
-function hueDist(a, b) { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d }
-function pullHue(h, target, amt) { let d = ((target - h + 540) % 360) - 180; return h + d * amt }
 
 // Monochrome 16-color palette from one accent (same structure as the
 // hand-made T480 scheme: accent shades in the red/green/magenta… slots,
