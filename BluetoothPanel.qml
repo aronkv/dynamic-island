@@ -206,7 +206,7 @@ ColumnLayout {
 
         Rectangle {
             visible: !row.first
-            x: row.hero ? 60 : 44
+            x: row.hero ? 64 : 50
             width: parent.width - x
             height: 1
             color: Qt.rgba(1, 1, 1, 0.07)
@@ -234,13 +234,13 @@ ColumnLayout {
                     id: badge
                     x: row.hero ? 12 : 10
                     anchors.verticalCenter: parent.verticalCenter
-                    width: row.hero ? 36 : 26
+                    width: row.hero ? 40 : 30
                     height: width
                     radius: width / 2
                     color: row.hero ? "#ffffff" : "transparent"
                     RowIcon {
                         anchors.centerIn: parent
-                        width: row.hero ? 18 : 16
+                        width: row.hero ? 24 : 21
                         height: width
                         source: panel.monitor ? panel.monitor.iconSource(row.device) : "image://icon/bluetooth-symbolic"
                         iconColor: row.hero ? "#000000" : "#ffffff"
