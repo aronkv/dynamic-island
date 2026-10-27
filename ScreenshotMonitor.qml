@@ -1,39 +1,35 @@
 import Quickshell
-import Quickshell.Io
 import QtQuick
+import Qt.labs.folderlistmodel
 
-// Polling-based, same convention as CameraMonitor.qml — Quickshell's Io
-// module has no directory-watch primitive (only FileView.watchChanges for a
-// single known file), so the newest file in the screenshots folder is
-// detected via a periodic `ls -t | head -1`, mirroring CameraMonitor's
-// fuser-based poll shape exactly.
+// Newest file in ~/Pictures/Screenshots. FolderListModel watches the
+// folder itself (no polling process). Only a file newer than the last one
+// counts, so deleting the newest screenshot doesn't announce an older one;
+// a short settle delay lets the screenshot tool finish writing it first.
 Item {
     id: screenshotMonitor
 
     readonly property string latestPath: _latestPath
     property string _latestPath: ""
+    property real _latestMs: 0
 
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: checkProc.running = true
+    FolderListModel {
+        id: folder
+        folder: "file://" + Quickshell.env("HOME") + "/Pictures/Screenshots"
+        showDirs: false
+        sortField: FolderListModel.Time
+        onCountChanged: settle.restart()
     }
 
-    Process {
-        id: checkProc
-        // Folder as a positional arg (not spliced into the script).
-        command: ["sh", "-c", "ls -t \"$1\" 2>/dev/null | head -1", "sh", Quickshell.env("HOME") + "/Pictures/Screenshots"]
-
-        stdout: StdioCollector {
-            waitForEnd: true
-            onTextChanged: {
-                const name = text.trim()
-                if (name.length > 0) {
-                    screenshotMonitor._latestPath = Quickshell.env("HOME") + "/Pictures/Screenshots/" + name
-                }
-            }
+    Timer {
+        id: settle
+        interval: 150
+        onTriggered: {
+            if (folder.count === 0) return
+            const ms = folder.get(0, "fileModified").getTime()
+            if (ms <= screenshotMonitor._latestMs) return
+            screenshotMonitor._latestMs = ms
+            screenshotMonitor._latestPath = folder.get(0, "filePath")
         }
     }
 }
