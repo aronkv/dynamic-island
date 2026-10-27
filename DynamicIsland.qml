@@ -1513,6 +1513,15 @@ PanelWindow {
             onTriggered: notch._setMorph(island.displayState)
         }
         readonly property real targetWidth: widthFor(notch.morphState)
+        // Full-size panels are laid out at their final width and revealed
+        // by the widening notch, so text near their edges showed up cut
+        // mid-word ("…ions") while it opened. Their opacity also follows
+        // the notch's width, fading in over its last 15 % (edge text only
+        // fits from ~93 %).
+        function reveal(state) {
+            const t = Math.max(0, Math.min(1, (width / widthFor(state) - 0.85) / 0.15))
+            return t * t * (3 - 2 * t)
+        }
         function widthFor(state) {
             switch (state) {
                 case "notification": return 380
@@ -3420,10 +3429,11 @@ PanelWindow {
             active: island.displayState === "system"
             accent: island.accentColor
             onCloseRequested: island.systemOpen = false
-            opacity: island.displayState === "system" ? 1 : 0
+            property real _fade: island.displayState === "system" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("system")
             scale: island.displayState === "system" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
@@ -3440,10 +3450,11 @@ PanelWindow {
             weather: weatherMonitor
             accent: island.accentColor
             onCloseRequested: island.activityOpen = false
-            opacity: island.displayState === "activity" ? 1 : 0
+            property real _fade: island.displayState === "activity" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("activity")
             scale: island.displayState === "activity" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
@@ -3459,10 +3470,11 @@ PanelWindow {
             store: notificationStore
             active: island.displayState === "notifications"
             onCloseRequested: island.notificationsOpen = false
-            opacity: island.displayState === "notifications" ? 1 : 0
+            property real _fade: island.displayState === "notifications" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("notifications")
             scale: island.displayState === "notifications" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
@@ -3494,10 +3506,11 @@ PanelWindow {
             z: 1
             active: island.displayState === "launcher"
             onCloseRequested: island.launcherOpen = false
-            opacity: island.displayState === "launcher" ? 1 : 0
+            property real _fade: island.displayState === "launcher" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("launcher")
             scale: island.displayState === "launcher" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
@@ -3514,10 +3527,11 @@ PanelWindow {
             monitor: clipboardMonitor
             active: island.displayState === "clipboard"
             onCloseRequested: island.clipboardOpen = false
-            opacity: island.displayState === "clipboard" ? 1 : 0
+            property real _fade: island.displayState === "clipboard" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("clipboard")
             scale: island.displayState === "clipboard" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
@@ -3534,10 +3548,11 @@ PanelWindow {
             active: island.displayState === "power"
             onCloseRequested: island.powerMenuOpen = false
             onLockRequested: lockScreen.lock()
-            opacity: island.displayState === "power" ? 1 : 0
+            property real _fade: island.displayState === "power" ? 1 : 0
+            FadeBehavior on _fade {}
+            opacity: _fade * notch.reveal("power")
             scale: island.displayState === "power" ? 1 : 0.9
             visible: opacity > 0
-            FadeBehavior on opacity {}
             ScaleBehavior on scale {}
         }
 
