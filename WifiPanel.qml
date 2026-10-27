@@ -432,37 +432,6 @@ ColumnLayout {
     }
 
     // Round ⓘ button that toggles a row's details.
-    component InfoButton: Rectangle {
-        id: ib
-        property bool open: false
-        signal clicked()
-        implicitWidth: 24
-        implicitHeight: 24
-        radius: 12
-        color: open ? "#ffffff" : (ibMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : "transparent")
-        border.width: open ? 0 : 1.2
-        border.color: Qt.rgba(1, 1, 1, 0.45)
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Text {
-            anchors.centerIn: parent
-            text: "i"
-            color: ib.open ? "#000000" : "#ffffff"
-            opacity: ib.open ? 1 : 0.7
-            font.pixelSize: 12
-            font.weight: 700
-            font.italic: false
-            font.family: "SF Pro Rounded"
-        }
-        MouseArea {
-            id: ibMouse
-            anchors.fill: parent
-            anchors.margins: -4
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: ib.clicked()
-        }
-    }
-
     // One network row inside a grouped list. Expands in place for the
     // password field, details, or the modify-password field.
     component NetworkRow: Item {
