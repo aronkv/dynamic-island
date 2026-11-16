@@ -3432,7 +3432,6 @@ PanelWindow {
             height: notch.heightFor("activity")
             z: 1
             store: activityStore
-            weather: weatherMonitor
             accent: island.accentColor
             onCloseRequested: island.activityOpen = false
             property real _fade: island.displayState === "activity" ? 1 : 0

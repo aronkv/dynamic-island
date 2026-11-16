@@ -25,7 +25,6 @@ Item {
     property alias batteryPercentInside: adapter.batteryPercentInside
     // Calculator: show the history column permanently (else via its button).
     property alias calcHistoryAlways: adapter.calcHistoryAlways
-    // "Rain in ~15 min" alert in the island (WeatherMonitor minutely data).
     property alias reduceMotion: adapter.reduceMotion
     // Night Shift (NightLight.qml / hyprsunset).
     property alias nightLight: adapter.nightLight

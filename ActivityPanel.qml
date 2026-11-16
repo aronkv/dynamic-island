@@ -9,7 +9,6 @@ import QtQuick.Shapes
 Item {
     id: panel
     property var store: null
-    property var weather: null
     property color accent: "#ffffff"
     signal closeRequested()
 
@@ -129,16 +128,6 @@ Item {
                 Pill { visible: panel.store && panel.store.mode !== "stopwatch"; label: "+1 min"; onClicked: panel.store.addMinute() }
             }
             Pill { label: "Stop"; tint: Theme.cardElevated; textColor: "#ff453a"; onClicked: panel.store.stopTimer() }
-        }
-
-        // ── Rain ──────────────────────────────────────────────────────
-        Text {
-            visible: panel.weather && panel.weather.rainSoon
-            text: "🌧  Rain expected in about " + (panel.weather ? Math.max(1, panel.weather.rainInMinutes) : 0) + " min"
-            color: "#ffffff"
-            opacity: 0.8
-            font.pixelSize: 13
-            font.family: Theme.fontText
         }
 
         // ── Quick start ───────────────────────────────────────────────
