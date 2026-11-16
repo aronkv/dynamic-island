@@ -26,7 +26,6 @@ Item {
     // Calculator: show the history column permanently (else via its button).
     property alias calcHistoryAlways: adapter.calcHistoryAlways
     // "Rain in ~15 min" alert in the island (WeatherMonitor minutely data).
-    property alias rainAlert: adapter.rainAlert
     property alias reduceMotion: adapter.reduceMotion
     // Night Shift (NightLight.qml / hyprsunset).
     property alias nightLight: adapter.nightLight
@@ -105,7 +104,6 @@ Item {
             property bool batteryBadgePercent: true
             property bool batteryPercentInside: false
             property bool calcHistoryAlways: false
-            property bool rainAlert: true
             property bool reduceMotion: false
             property bool nightLight: false
             property string recordResolution: "native"

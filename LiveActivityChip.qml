@@ -2,21 +2,17 @@ import QtQuick
 import QtQuick.Shapes
 
 // Compact live-activity indicator at the left of the idle pill. Shows the
-// most important one: timer / pomodoro / stopwatch (progress ring + time)
-// > rain soon. Screen recording and low battery have their own badges
+// running timer / pomodoro / stopwatch (progress ring + time). Screen recording and low battery have their own badges
 // outside the pill (RecordingBadge.qml, BatteryBadge.qml).
 // Click → the expanded activity view (signal `openRequested`).
 Item {
     id: chip
     property var store: null
-    property var weather: null
-    property bool rainEnabled: true
     property color accent: "#ffffff"
     signal openRequested()
 
     readonly property string kind: !store ? ""
-        : store.timerActive ? "timer"
-        : (rainEnabled && weather && weather.rainSoon) ? "rain" : ""
+        : store.timerActive ? "timer" : ""
     readonly property bool shown: kind !== ""
 
     implicitWidth: shown ? row.implicitWidth : 0
@@ -65,17 +61,9 @@ Item {
         }
 
         Text {
-            visible: chip.kind === "rain"
-            anchors.verticalCenter: parent.verticalCenter
-            text: "🌧"
-            font.pixelSize: 13
-        }
-
-        Text {
             anchors.verticalCenter: parent.verticalCenter
             text: !chip.store ? ""
                 : chip.kind === "timer" ? chip.store.format(chip.store.mode === "stopwatch" ? chip.store.elapsed : chip.store.remaining)
-                : chip.kind === "rain" && chip.weather ? (chip.weather.rainInMinutes <= 1 ? "Rain now" : "Rain " + chip.weather.rainInMinutes + "m")
                 : ""
             color: "#ffffff"
             opacity: chip.store && chip.store.paused && chip.kind === "timer" ? 0.5 : 1

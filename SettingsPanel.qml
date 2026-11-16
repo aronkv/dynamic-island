@@ -682,15 +682,6 @@ ColumnLayout {
                     title: "WEATHER"
                     Group {
                         Row {
-                            icon: "weather-showers-symbolic"
-                            tint: Theme.blue
-                            label: "Rain alert"
-                            subtitle: "Heads-up in the island ~15–30 min before rain"
-                            checked: panel.store ? panel.store.rainAlert : false
-                            onToggled: if (panel.store) panel.store.rainAlert = !panel.store.rainAlert
-                        }
-                        Separator {}
-                        Row {
                             icon: "find-location-symbolic"
                             tint: Theme.blue
                             label: "Manual location"

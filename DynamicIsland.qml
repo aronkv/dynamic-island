@@ -277,15 +277,6 @@ PanelWindow {
         settingsStore: settingsStore
     }
 
-    // Rain alert: notify once when rain becomes imminent.
-    Connections {
-        target: weatherMonitor
-        function onRainSoonChanged() {
-            if (weatherMonitor.rainSoon && settingsStore.rainAlert)
-                activityStore.notify("Rain soon", "Rain expected in about " + Math.max(1, weatherMonitor.rainInMinutes) + " minutes.", "weather-showers-symbolic")
-        }
-    }
-
     NetworkMonitor {
         id: networkMonitor
     }
@@ -1889,12 +1880,10 @@ PanelWindow {
                 spacing: 12
                 opacity: island.idleSwapOpacity
 
-                // Live activity (timer / rain) — click expands. Recording and
+                // Live activity (timer) — click expands. Recording and
                 // low battery have their own badges outside the pill.
                 LiveActivityChip {
                     store: activityStore
-                    weather: weatherMonitor
-                    rainEnabled: settingsStore.rainAlert
                     accent: island.accentColor
                     onOpenRequested: { island.closeAllPanels(); island.activityOpen = true }
                 }
