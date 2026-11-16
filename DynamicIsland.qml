@@ -1634,7 +1634,7 @@ PanelWindow {
                 case "power": return 196
                 case "launcher": return 470
                 case "system": return 430
-                case "activity": return activityStore.timerActive ? (activityStore.recording ? 190 : 150) : (activityStore.recording ? 190 : 150)
+                case "activity": return activityStore.timerActive ? (activityStore.recording ? 186 : 122) : (activityStore.recording ? 174 : 106)
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
                 case "screenshot": return 150
