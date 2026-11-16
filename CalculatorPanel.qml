@@ -77,6 +77,7 @@ ColumnLayout {
                 panel.analysis = res
                 panel.resultValue = res.roots.length > 0 ? res.roots[0] : 0
                 panel.resultText = res.text
+                panel.subText = res.interval || ""
                 return
             }
             panel.analysis = null

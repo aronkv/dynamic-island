@@ -298,7 +298,15 @@ QtObject {
                 return fmt(l) + lt + "x" + lt + fmt(r)
             }).join("  or  ")
         }
-        return { kind: "inequality", text: text + suffix, roots: roots, f: f, range: range, intervals: intervals }
+        // Hungarian interval notation: ]a;b[ open, [a;b] closed, ∪ between parts.
+        const ifmt = v => fmt(v).replace(/^-/, "−")
+        const closed = v => isFinite(v) && !(trig && v === 360) && holds(v)
+        const interval = intervals.length === 0
+            ? (inclusive && roots.length > 0 ? "{" + roots.map(ifmt).join("; ") + "}" : "∅")
+            : !isFinite(intervals[0][0]) && !isFinite(intervals[0][1]) ? "ℝ"
+            : intervals.map(([l, r]) => (closed(l) ? "[" : "]") + (isFinite(l) ? ifmt(l) : "−∞") + ";"
+                + (isFinite(r) ? ifmt(r) : "∞") + (closed(r) ? "]" : "[")).join(" ∪ ")
+        return { kind: "inequality", text: text + suffix, interval: "x ∈ " + interval, roots: roots, f: f, range: range, intervals: intervals }
     }
 
     // Backwards-compatible wrapper (equations only).
