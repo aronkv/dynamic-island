@@ -10,6 +10,9 @@ Item {
 
     readonly property var device: UPower.displayDevice
 
+    // False until UPower has queried the device: before that it reports 0 %,
+    // which at boot looked like an empty battery (auto Power Saver, wide badge).
+    readonly property bool ready: !!device && device.ready
     readonly property real percentage: device ? device.percentage * 100 : 0
     readonly property int state: device ? device.state : UPowerDeviceState.Unknown
     readonly property bool healthSupported: device ? device.healthSupported : false
@@ -145,7 +148,7 @@ Item {
     property bool _lowPowerUserOverride: false
     property int _profileBeforeAuto: PowerProfile.Balanced
     function _checkAutoLowPower() {
-        if (!autoLowPower || !device || !daemonAvailable) return
+        if (!autoLowPower || !ready || !daemonAvailable) return
         if (!onBattery) _lowPowerUserOverride = false
         if (onBattery && percentage <= 20 && !_lowPowerAutoApplied && !_lowPowerUserOverride && profile !== PowerProfile.PowerSaver) {
             _profileBeforeAuto = profile
@@ -157,6 +160,7 @@ Item {
         }
     }
     onPercentageChanged: _checkAutoLowPower()
+    onReadyChanged: _checkAutoLowPower()
     onDaemonAvailableChanged: _checkAutoLowPower()
     onAutoLowPowerChanged: _checkAutoLowPower()
 

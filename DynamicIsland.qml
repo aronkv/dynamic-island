@@ -686,12 +686,12 @@ PanelWindow {
         interval: island.lowBatteryLevel >= 20 ? 7000 : 9000
         onTriggered: island.lowBatteryActive = false
     }
-    Timer { id: lowBatteryReadyTimer; interval: 2500; running: true; onTriggered: island._lowBatteryAnnounced = batteryMonitor.onBattery ? island._lowBatteryBucket(batteryMonitor.percentage) : 101 }
+    Timer { id: lowBatteryReadyTimer; interval: 2500; running: batteryMonitor.ready; onTriggered: island._lowBatteryAnnounced = batteryMonitor.onBattery ? island._lowBatteryBucket(batteryMonitor.percentage) : 101 }
     Process { id: lowBatterySound }
     Connections {
         target: batteryMonitor
         function onPercentageChanged() {
-            if (lowBatteryReadyTimer.running || !batteryMonitor.onBattery) return
+            if (!batteryMonitor.ready || lowBatteryReadyTimer.running || !batteryMonitor.onBattery) return
             const b = island._lowBatteryBucket(batteryMonitor.percentage)
             if (b < island._lowBatteryAnnounced) {
                 island._lowBatteryAnnounced = b

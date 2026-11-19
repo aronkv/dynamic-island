@@ -23,7 +23,7 @@ Item {
 
     readonly property real pct: battery ? Math.max(0, Math.min(100, battery.percentage)) : 0
     readonly property bool low: pct <= 10
-    readonly property bool active: !!battery && battery.onBattery && (enabledSetting || low)
+    readonly property bool active: !!battery && battery.ready && battery.onBattery && (enabledSetting || low)
     // Smoothed estimate from BatteryMonitor (seconds); shown only when low.
     readonly property int minutesLeft: low && battery && battery.timeRemaining > 0 ? Math.round(battery.timeRemaining / 60) : -1
     readonly property color tint: pct <= 10 ? "#ff453a" : lowPower ? "#ffd60a" : "#ffffff"
@@ -55,8 +55,8 @@ Item {
     // ends ~3.4 px inside its slot, so the content is right-aligned with
     // that inset instead of being centred.
     readonly property real rightInset: 3
-    width: Math.max(size, contentW + rightInset + 8)
-    height: size
+    implicitWidth: Math.max(size, contentW + rightInset + 8)
+    implicitHeight: size
 
     opacity: active ? 1 : 0
     scale: active ? 1 : 0.7

@@ -16,8 +16,8 @@ Rectangle {
 
     readonly property bool active: !!store && store.recording
 
-    width: Math.max(size, row.implicitWidth + 24)
-    height: size
+    implicitWidth: Math.max(size, row.implicitWidth + 24)
+    implicitHeight: size
     radius: height / 2
     color: surfaceColor
 
