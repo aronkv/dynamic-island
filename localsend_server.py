@@ -35,10 +35,12 @@ presents the same identity whether it's sending or receiving.
 """
 import json
 import os
+import select
 import ssl
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -287,6 +289,7 @@ class Handler(BaseHTTPRequestHandler):
 
         session = {
             "alias": info.get("alias", "Unknown device"),
+            "ip": self.client_address[0],
             "deviceType": info.get("deviceType") or "desktop",
             "files": files,
             "decision": None,
@@ -310,11 +313,31 @@ class Handler(BaseHTTPRequestHandler):
             ],
         })
 
-        got_decision = session["event"].wait(timeout=PENDING_TIMEOUT_S)
+        # The sender sends nothing more until we answer, so a readable
+        # socket means it closed the connection (cancelled or timed out on
+        # its side): drop the prompt then instead of after the full timeout.
+        deadline = time.monotonic() + PENDING_TIMEOUT_S
+        got_decision = abandoned = False
+        while time.monotonic() < deadline:
+            if session["event"].wait(1):
+                got_decision = True
+                break
+            if select.select([self.connection], [], [], 0)[0]:
+                abandoned = True
+                break
         with sessions_lock:
             decision = session["decision"]
             if not got_decision and decision is None:
                 decision = session["decision"] = "reject"
+        if abandoned and decision == "reject":
+            with sessions_lock:
+                sessions.pop(session_id, None)
+            log({"event": "cancelled", "sessionId": session_id})
+            self.close_connection = True
+            return
+        if decision == "cancelled":  # /cancel arrived while waiting
+            self._send_empty(403)
+            return
 
         if decision == "accept":
             self._send_json(200, {
@@ -382,11 +405,18 @@ class Handler(BaseHTTPRequestHandler):
         qs = parse_qs(urlparse(self.path).query)
         session_id = (qs.get("sessionId") or [None])[0]
         with sessions_lock:
-            session = sessions.pop(session_id, None) if session_id else None
-        if session is not None:
+            if session_id:
+                ids = [session_id] if session_id in sessions else []
+            else:
+                # A sender cancelling before we answered prepare-upload
+                # doesn't know the sessionId yet: cancel its pending ones.
+                ids = [sid for sid, s in sessions.items()
+                       if s["ip"] == self.client_address[0] and s["decision"] is None]
+            cancelled = [(sid, sessions.pop(sid)) for sid in ids]
+        for sid, session in cancelled:
             session["decision"] = session["decision"] or "cancelled"
             session["event"].set()
-            log({"event": "cancelled", "sessionId": session_id})
+            log({"event": "cancelled", "sessionId": sid})
         self._send_empty(200)
 
 
