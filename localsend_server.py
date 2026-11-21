@@ -69,12 +69,22 @@ CERT_PATH = os.path.join(CONFIG_DIR, "localsend_cert.pem")
 KEY_PATH = os.path.join(CONFIG_DIR, "localsend_key.pem")
 DOWNLOADS_DIR = os.path.join(HOME, "Downloads")
 
+def cert_fingerprint():
+    # LocalSend's fingerprint in HTTPS mode is the SHA-256 of the TLS cert
+    # (DER, uppercase hex), and peers check it against the cert they get:
+    # a fixed string made the official desktop app reject this device.
+    import hashlib
+    ensure_cert()
+    with open(CERT_PATH) as f:
+        return hashlib.sha256(ssl.PEM_cert_to_DER_cert(f.read())).hexdigest().upper()
+
+
 DEVICE_INFO = {
     "alias": "Dynamic Island",
     "version": "2.0",
     "deviceModel": "Linux",
     "deviceType": "desktop",
-    "fingerprint": "quickshell-dynamic-island",
+    "fingerprint": None,  # set in main() via cert_fingerprint()
     "port": PORT,
     "protocol": "https",
     "download": False,
@@ -375,7 +385,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    ensure_cert()
+    DEVICE_INFO["fingerprint"] = cert_fingerprint()
     threading.Thread(target=stdin_reader, daemon=True).start()
 
     httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)

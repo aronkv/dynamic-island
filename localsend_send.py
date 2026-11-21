@@ -138,7 +138,9 @@ def main():
         print(json.dumps({"status": "error", "message": "wrong argument count"}))
         return
 
-    ip, port_str, protocol, alias, device_model, fingerprint = sys.argv[1:7]
+    ip, port_str, protocol, alias, device_model, _ = sys.argv[1:7]
+    from localsend_server import cert_fingerprint
+    fingerprint = cert_fingerprint()
     paths = sys.argv[7:]
 
     for path in paths:

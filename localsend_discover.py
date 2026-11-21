@@ -13,6 +13,8 @@ import sys
 import threading
 import time
 
+from localsend_server import cert_fingerprint
+
 
 # Exit together with Quickshell. Restarting qs (reload.sh) left this
 # process running, reparented to init: an orphaned server kept TCP 53317,
@@ -43,12 +45,13 @@ PORT = 53317
 # multicast announcement schema is the /register body plus "announce": true
 # — that flag is what tells other listeners "reply to me," per the spec's
 # own note that "a response is only triggered when announce is true."
+OWN_FINGERPRINT = cert_fingerprint()
 ANNOUNCE_PAYLOAD = json.dumps({
     "alias": "Dynamic Island",
     "version": "2.0",
     "deviceModel": "Linux",
     "deviceType": "desktop",
-    "fingerprint": "quickshell-dynamic-island",
+    "fingerprint": OWN_FINGERPRINT,
     "port": PORT,
     "protocol": "https",
     "download": False,
@@ -92,10 +95,9 @@ threading.Thread(target=announce_loop, daemon=True).start()
 # this process receives its own announce_loop() broadcasts above and would
 # otherwise list itself as a discoverable/sendable device (confirmed via a
 # headless qs run logging "LocalSend device seen: Dynamic Island... " for
-# this exact machine). Filter by our own fixed fingerprint rather than by
+# this exact machine). Filter by our own fingerprint rather than by
 # source IP, since IP alone can't distinguish "us" from another device
 # behind the same NAT/interface.
-OWN_FINGERPRINT = "quickshell-dynamic-island"
 
 while True:
     data, addr = sock.recvfrom(65535)
