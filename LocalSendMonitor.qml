@@ -170,6 +170,15 @@ Item {
         localSendMonitor.pendingIncoming = null
     }
 
+    // LocalSend text messages arrive as one text/plain "file" whose preview
+    // is the full text. Copying it finishes the session without a file.
+    function copyIncomingText(text) {
+        if (!localSendMonitor.pendingIncoming) return
+        Quickshell.execDetached(["wl-copy", "--", text])
+        serverProc.write(JSON.stringify({ sessionId: localSendMonitor.pendingIncoming.sessionId, action: "done" }) + "\n")
+        localSendMonitor.pendingIncoming = null
+    }
+
     function rejectIncoming() {
         if (!localSendMonitor.pendingIncoming) return
         serverProc.write(JSON.stringify({ sessionId: localSendMonitor.pendingIncoming.sessionId, action: "reject" }) + "\n")

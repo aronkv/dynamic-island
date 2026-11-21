@@ -149,7 +149,7 @@ def stdin_reader():
             continue
         session_id = cmd.get("sessionId")
         action = cmd.get("action")
-        if not session_id or action not in ("accept", "reject"):
+        if not session_id or action not in ("accept", "reject", "done"):
             continue
         with sessions_lock:
             session = sessions.get(session_id)
@@ -321,6 +321,12 @@ class Handler(BaseHTTPRequestHandler):
                 "sessionId": session_id,
                 "files": {fid: f["token"] for fid, f in files.items()},
             })
+        elif decision == "done":
+            # A text message already handled on the island (copied): the
+            # spec's 204 "no file transfer needed" ends it without an upload.
+            with sessions_lock:
+                sessions.pop(session_id, None)
+            self._send_empty(204)
         else:
             if not got_decision:
                 log({"event": "expired", "sessionId": session_id})

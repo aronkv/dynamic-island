@@ -1638,7 +1638,7 @@ PanelWindow {
                 case "notifications": return notificationStore.items.length === 0 ? 200 : Math.min(560, 90 + notificationStore.items.length * 84)
                 case "clipboard": return 480
                 case "screenshot": return 150
-                case "localsend": return localSendMonitor.pendingIncoming !== null ? (incomingCard.previewSrc !== "" ? 192 : 172) : 190
+                case "localsend": return localSendMonitor.pendingIncoming !== null ? ((incomingCard.previewSrc !== "" || incomingCard.textMsg !== "") ? 192 : 172) : 190
                 default:
                     if (island.pillModeEffective === "strip" && !island.stripHovered) return 10
                     // Bumped from 36, explicit user request.
@@ -2487,6 +2487,9 @@ PanelWindow {
                 readonly property var req: localSendMonitor.pendingIncoming
                 readonly property var files: req ? req.files : []
                 readonly property real totalSize: files.reduce((a, f) => a + (f.size || 0), 0)
+                // A LocalSend text message: one text/plain file whose preview is the text.
+                readonly property string textMsg: files.length === 1 && (files[0].fileType || "").startsWith("text/plain")
+                    ? (files[0].preview || "") : ""
                 function fmtSize(b) {
                     const u = ["B", "KB", "MB", "GB"]
                     let i = 0
@@ -2549,7 +2552,8 @@ PanelWindow {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: "wants to share " + (incomingCard.files.length === 1 ? "a file" : incomingCard.files.length + " files")
+                            text: incomingCard.textMsg !== "" ? "sent a message"
+                                : "wants to share " + (incomingCard.files.length === 1 ? "a file" : incomingCard.files.length + " files")
                             color: "#ffffff"
                             opacity: 0.5
                             font.pixelSize: 11
@@ -2570,7 +2574,7 @@ PanelWindow {
                 }
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: incomingCard.previewSrc !== "" ? 64 : 44
+                    implicitHeight: (incomingCard.previewSrc !== "" || incomingCard.textMsg !== "") ? 64 : 44
                     radius: 12
                     color: Theme.card
                     RowLayout {
@@ -2602,15 +2606,20 @@ PanelWindow {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: incomingCard.files.length === 1 ? incomingCard.files[0].fileName
+                            text: incomingCard.textMsg !== "" ? incomingCard.textMsg
+                                : incomingCard.files.length === 1 ? incomingCard.files[0].fileName
                                 : incomingCard.files.length + " files · " + incomingCard.files.map(f => f.fileName).join(", ")
                             color: "#ffffff"
                             font.pixelSize: 12
                             font.weight: 600
                             font.family: "SF Pro Text"
-                            elide: Text.ElideMiddle
+                            textFormat: Text.PlainText
+                            wrapMode: incomingCard.textMsg !== "" ? Text.Wrap : Text.NoWrap
+                            maximumLineCount: incomingCard.textMsg !== "" ? 3 : 1
+                            elide: incomingCard.textMsg !== "" ? Text.ElideRight : Text.ElideMiddle
                         }
                         Text {
+                            visible: incomingCard.textMsg === ""
                             text: incomingCard.fmtSize(incomingCard.totalSize)
                             color: "#ffffff"
                             opacity: 0.45
@@ -2660,7 +2669,7 @@ PanelWindow {
                         Behavior on scale { NumberAnimation { duration: 110 } }
                         Text {
                             anchors.centerIn: parent
-                            text: "Accept"
+                            text: incomingCard.textMsg !== "" ? "Copy" : "Accept"
                             color: "#000000"
                             font.pixelSize: 13
                             font.weight: 700
@@ -2671,7 +2680,9 @@ PanelWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: localSendMonitor.acceptIncoming()
+                            onClicked: incomingCard.textMsg !== ""
+                                ? localSendMonitor.copyIncomingText(incomingCard.textMsg)
+                                : localSendMonitor.acceptIncoming()
                         }
                     }
                 }
